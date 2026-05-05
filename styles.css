@@ -1,0 +1,472 @@
+:root {
+    --bg-dark: #000000;
+    --bg-surface: #121212;
+    --bg-card: #181818;
+    --bg-card-hover: #282828;
+    --spotify-green: #1DB954;
+    --text-main: #FFFFFF;
+    --text-muted: #B3B3B3;
+    --font-ui: 'Inter', sans-serif;
+    --font-heading: 'Montserrat', sans-serif;
+    --shadow-subtle: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 1000px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.logo-icon {
+    color: var(--spotify-green);
+    font-size: 1.8rem;
+}
+
+h1 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#auth-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.nav-link {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.nav-link:hover {
+    color: var(--spotify-green);
+}
+
+.pricing-badge {
+    background: #282828;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+#credit-count {
+    color: var(--spotify-green);
+}
+
+/* Mode Toggle */
+.mode-toggle-container {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.toggle-track {
+    display: flex;
+    background: #121212;
+    border-radius: 8px;
+    position: relative;
+    padding: 4px;
+    width: 320px;
+    border: 1px solid #333;
+}
+
+.toggle-indicator {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    height: calc(100% - 8px);
+    background: #333;
+    border-radius: 4px;
+    transition: transform 0.2s ease-in-out;
+}
+
+.toggle-track.transcriber-active .toggle-indicator {
+    transform: translateX(100%);
+}
+
+.toggle-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.6rem 0;
+    cursor: pointer;
+    z-index: 1;
+    transition: color 0.2s;
+}
+
+.toggle-btn.active {
+    color: #fff;
+}
+
+/* Cards / Workspace */
+.glass-panel {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 2.5rem;
+    box-shadow: var(--shadow-subtle);
+    transition: background-color 0.3s;
+}
+
+.hidden {
+    display: none !important;
+}
+
+h2 {
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 2.5rem;
+    font-weight: 400;
+}
+
+/* Controls Grid */
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.control-group label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-main);
+    margin-bottom: 0.75rem;
+}
+
+.cyber-select, .cyber-input, .cyber-textarea {
+    width: 100%;
+    background: #3e3e3e;
+    border: none;
+    color: #fff;
+    padding: 0.8rem 1rem;
+    border-radius: 4px;
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.cyber-select:hover, .cyber-input:hover, .cyber-textarea:hover {
+    background: #4e4e4e;
+}
+
+.cyber-textarea {
+    min-height: 180px;
+}
+
+.cyber-slider {
+    width: 100%;
+    accent-color: var(--spotify-green);
+}
+
+/* Buttons */
+.action-bar {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    margin-top: 2rem;
+}
+
+.cyber-button {
+    padding: 0.8rem 2rem;
+    border: none;
+    border-radius: 500px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    transition: transform 0.1s, background-color 0.2s;
+}
+
+.cyber-button:active {
+    transform: scale(0.95);
+}
+
+.cyber-button.primary {
+    background: var(--spotify-green);
+    color: #000;
+}
+
+.cyber-button.primary:hover {
+    background: #1ed760;
+    transform: scale(1.04);
+}
+
+.cyber-button.secondary {
+    background: transparent;
+    color: var(--text-main);
+    border: 1px solid #727272;
+}
+
+.cyber-button.secondary:hover {
+    border-color: #fff;
+}
+
+/* Upload Area */
+.upload-area {
+    background: #181818;
+    border: 2px dashed #333;
+    border-radius: 8px;
+    padding: 4rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.upload-area:hover {
+    border-color: var(--text-muted);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    display: block;
+    color: var(--text-muted);
+}
+
+.upload-btn {
+    display: inline-block;
+    margin-top: 1rem;
+    background: #fff;
+    color: #000;
+    padding: 0.75rem 2rem;
+    border-radius: 500px;
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+/* Audio Player */
+.audio-player-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #282828;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.glass-modal {
+    background: #282828;
+    border-radius: 8px;
+    padding: 2.5rem;
+    width: 90%;
+    max-width: 650px;
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    top: 1rem; right: 1rem;
+    color: var(--text-muted);
+    font-size: 1.5rem;
+}
+
+.close-btn:hover {
+    color: #fff;
+}
+
+/* Dashboard Specific Styles */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+}
+
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.profile-info {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.avatar {
+    font-size: 3rem;
+    background: #282828;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+}
+
+.details .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+}
+
+.details .val {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.edit-form {
+    border-top: 1px solid #333;
+    padding-top: 1.5rem;
+}
+
+.balance-display {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    background: linear-gradient(135deg, #1DB954, #191414);
+    padding: 2rem;
+    border-radius: 12px;
+}
+
+.balance-val {
+    display: block;
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.balance-label {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+.topup-options h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.pricing-tier-card {
+    background: #282828;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #333;
+    transition: transform 0.2s;
+}
+
+.pricing-tier-card:hover {
+    background: #333;
+    transform: translateY(-4px);
+}
+
+.pricing-tier-card.pro {
+    border-color: var(--spotify-green);
+}
+
+.pricing-tier-card h4 {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.tier-desc {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.price-tag {
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+}
+
+.local-price {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-top: 0.25rem;
+}
+
+.cyber-button.small {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.8rem;
+}

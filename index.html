@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurelius Audio Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Netlify Identity Widget -->
+    <script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header & Auth -->
+        <header class="app-header">
+            <div class="logo">
+                <span class="logo-icon">●</span>
+                <h1>Aurelius</h1>
+            </div>
+            <div class="header-controls">
+                <div id="pricing-tier" class="pricing-badge">Free Tier: <span id="credit-count">5</span> Credits</div>
+                <button id="btn-dashboard-nav" class="nav-link hidden">Dashboard</button>
+                <div id="auth-controls">
+                    <button id="btn-login" class="nav-link">Log In</button>
+                    <button id="btn-signup" class="cyber-button primary small">Sign Up</button>
+                    <button id="btn-logout" class="nav-link hidden">Log Out</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mode Toggle -->
+        <div class="mode-toggle-container">
+            <div class="toggle-track">
+                <div class="toggle-indicator"></div>
+                <button class="toggle-btn active" id="btn-reader">🔊 Reader</button>
+                <button class="toggle-btn" id="btn-transcriber">📝 Transcriber</button>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="workspace">
+            
+            <!-- READER MODE (TTS) -->
+            <section id="view-reader" class="view-section active">
+                <div class="glass-panel">
+                    <h2>The "Persona" Reader</h2>
+                    <p class="subtitle">High-fidelity voice synthesis</p>
+                    
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label>Accent & Persona</label>
+                            <select id="reader-voice" class="cyber-select">
+                                <option value="british-rp">British RP (Sophisticated/Formal)</option>
+                                <option value="australian">Australian (Friendly/Natural)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Speed: <span id="speed-val">1.0x</span></label>
+                            <input type="range" id="reader-speed" min="0.5" max="2.0" step="0.1" value="1.0" class="cyber-slider">
+                        </div>
+                        <div class="control-group">
+                            <label>Director Prompt</label>
+                            <input type="text" id="reader-prompt" class="cyber-input" placeholder="e.g., Speak with an urgent tone...">
+                        </div>
+                    </div>
+
+                    <div class="editor-area">
+                        <textarea id="reader-text" class="cyber-textarea" placeholder="Enter text to synthesize..."></textarea>
+                    </div>
+                    
+                    <div class="action-bar">
+                        <button id="btn-generate-tts" class="cyber-button primary">Generate Audio (1 Credit)</button>
+                        <div class="audio-player-container hidden" id="tts-player-wrapper">
+                            <audio id="tts-audio" controls></audio>
+                            <a id="tts-download" class="cyber-button secondary" download="aurelius_output.mp3">Download</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TRANSCRIBER MODE (STT) -->
+            <section id="view-transcriber" class="view-section hidden">
+                <div class="glass-panel">
+                    <h2>The "Intelligent Ear"</h2>
+                    <p class="subtitle">Multilingual audio transcription</p>
+                    
+                    <div class="upload-area" id="upload-zone">
+                        <input type="file" id="stt-file" accept="audio/*" class="hidden-input">
+                        <div class="upload-content">
+                            <span class="upload-icon">📁</span>
+                            <p>Drag & drop recorded audio file here</p>
+                            <span class="upload-btn">Browse Files</span>
+                        </div>
+                        <p class="file-name" id="selected-file-name"></p>
+                    </div>
+
+                    <div class="controls-grid">
+                        <div class="control-group">
+                            <label>Language</label>
+                            <select id="stt-lang" class="cyber-select">
+                                <option value="en">English</option>
+                                <option value="ar">Arabic</option>
+                                <option value="ms">Malay</option>
+                                <option value="id">Indonesian</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <button id="btn-transcribe" class="cyber-button primary">Transcribe (1 Credit / min)</button>
+                        <button id="btn-summarize" class="cyber-button secondary hidden">One-Click Summary</button>
+                    </div>
+
+                    <div class="results-area hidden" id="stt-results">
+                        <h3>Transcript</h3>
+                        <div class="transcript-content" id="transcript-text"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- DASHBOARD MODE -->
+            <section id="view-dashboard" class="view-section hidden">
+                <div class="dashboard-grid">
+                    <!-- Profile Card -->
+                    <div class="glass-panel profile-card">
+                        <h2>User Profile</h2>
+                        <div class="profile-info">
+                            <div class="avatar" id="user-avatar">👤</div>
+                            <div class="details">
+                                <p class="label">Name</p>
+                                <p id="profile-name" class="val">Loading...</p>
+                                <p class="label">Email</p>
+                                <p id="profile-email" class="val">Loading...</p>
+                            </div>
+                        </div>
+                        <form id="edit-profile-form" class="edit-form">
+                            <div class="control-group">
+                                <label>Display Name</label>
+                                <input type="text" id="input-name" class="cyber-input" placeholder="Update your name">
+                            </div>
+                            <button type="submit" class="cyber-button secondary small">Update Profile</button>
+                        </form>
+                    </div>
+
+                    <!-- Credits & Top-up Card -->
+                    <div class="glass-panel credits-card">
+                        <h2>Credits & Top-up</h2>
+                        <div class="balance-display">
+                            <span class="balance-val" id="dashboard-credit-count">5</span>
+                            <span class="balance-label">Credits Available</span>
+                        </div>
+                        
+                        <div class="topup-options">
+                            <h3>Purchase Credits</h3>
+                            <div class="pricing-grid">
+                                <div class="pricing-tier-card">
+                                    <h4>Basic</h4>
+                                    <p class="tier-desc">60 Credits</p>
+                                    <p class="price-tag">$5.00 <span class="local-price" id="price-basic-local"></span></p>
+                                    <button class="cyber-button primary small btn-buy" data-tier="basic">Top Up</button>
+                                </div>
+                                <div class="pricing-tier-card pro">
+                                    <h4>Pro</h4>
+                                    <p class="tier-desc">300 Credits</p>
+                                    <p class="price-tag">$20.00 <span class="local-price" id="price-pro-local"></span></p>
+                                    <button class="cyber-button primary small btn-buy" data-tier="pro">Top Up</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Summarization Modal -->
+    <div id="summary-modal" class="modal-overlay hidden">
+        <div class="glass-modal">
+            <button class="close-btn" id="close-modal">&times;</button>
+            <h2>Intelligent Summary</h2>
+            <div class="modal-content" id="summary-content">
+                Loading summary...
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
