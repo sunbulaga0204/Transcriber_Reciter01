@@ -82,7 +82,7 @@ exports.handler = async (event, context) => {
     const response = await axios.post(
       'https://openrouter.ai/api/v1/audio/speech',
       {
-        model: 'openai/tts-1',
+        model: 'google/gemini-3.1-flash-tts-preview',
         input: inputText,
         voice: ttsVoice,
         speed: parseFloat(speed),

@@ -99,7 +99,7 @@ exports.handler = async (event, context) => {
         // Use OpenRouter's Whisper endpoint for transcription
         const form = new FormData();
         form.append('file', fileBuffer, { filename: fileName, contentType: mimeType });
-        form.append('model', 'openai/whisper-1');
+        form.append('model', 'openai/gpt-4o-mini-transcribe');
         form.append('language', LANG_MAP[lang] || 'en');
         form.append('response_format', 'verbose_json');
         form.append('timestamp_granularities[]', 'segment');
