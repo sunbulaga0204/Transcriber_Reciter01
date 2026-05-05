@@ -470,3 +470,79 @@ h2 {
     padding: 0.6rem 1.2rem;
     font-size: 0.8rem;
 }
+
+/* Admin Panel Styles */
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.stat-card {
+    background: #282828;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #333;
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.stat-val {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.status-ok {
+    color: var(--spotify-green);
+}
+
+.admin-table-wrapper {
+    overflow-x: auto;
+    background: #181818;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.admin-table th, .admin-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #333;
+}
+
+.admin-table th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: #222;
+}
+
+.badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge.admin {
+    background: rgba(29, 185, 84, 0.2);
+    color: var(--spotify-green);
+}
+
+.active-nav {
+    color: #fff !important;
+    text-decoration: underline !important;
+    text-underline-offset: 8px;
+}

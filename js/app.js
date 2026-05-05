@@ -5,8 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const viewReader = document.getElementById('view-reader');
     const viewTranscriber = document.getElementById('view-transcriber');
     const viewDashboard = document.getElementById('view-dashboard');
+    const viewAdmin = document.getElementById('view-admin');
     const toggleTrack = document.querySelector('.toggle-track');
     const btnDashboardNav = document.getElementById('btn-dashboard-nav');
+    const btnAdminNav = document.getElementById('btn-admin-nav');
     const btnLogin = document.getElementById('btn-login');
     const btnSignup = document.getElementById('btn-signup');
     const btnLogout = document.getElementById('btn-logout');
@@ -16,16 +18,26 @@ document.addEventListener('DOMContentLoaded', () => {
     btnLogout.addEventListener('click', () => window.netlifyIdentity.logout());
 
     const switchView = (targetView) => {
-        [viewReader, viewTranscriber, viewDashboard].forEach(view => view.classList.add('hidden'));
+        [viewReader, viewTranscriber, viewDashboard, viewAdmin].forEach(view => view.classList.add('hidden'));
         targetView.classList.remove('hidden');
         
         // Handle toggle visibility
-        if (targetView === viewDashboard) {
+        if (targetView === viewDashboard || targetView === viewAdmin) {
             document.querySelector('.mode-toggle-container').classList.add('hidden');
-            btnDashboardNav.textContent = "← Back to Tools";
+            btnDashboardNav.textContent = targetView === viewAdmin ? "← Back to Tools" : "Dashboard";
+            btnAdminNav.textContent = targetView === viewAdmin ? "Admin Panel" : "Admin Panel";
+            if (targetView === viewAdmin) {
+                btnDashboardNav.classList.remove('active-nav');
+                btnAdminNav.classList.add('active-nav');
+            } else {
+                btnDashboardNav.classList.add('active-nav');
+                btnAdminNav.classList.remove('active-nav');
+            }
         } else {
             document.querySelector('.mode-toggle-container').classList.remove('hidden');
             btnDashboardNav.textContent = "Dashboard";
+            btnDashboardNav.classList.remove('active-nav');
+            btnAdminNav.classList.remove('active-nav');
         }
     };
 
@@ -52,6 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
             btnTranscriber.classList.remove('active');
             toggleTrack.classList.remove('transcriber-active');
         }
+    });
+
+    btnAdminNav.addEventListener('click', () => {
+        switchView(viewAdmin);
     });
 
     // Speed Slider Value Update
@@ -108,14 +124,23 @@ document.addEventListener('DOMContentLoaded', () => {
             btnLogin.classList.add('hidden');
             btnSignup.classList.add('hidden');
             btnLogout.classList.remove('hidden');
+
+            // Check for Admin role
+            const roles = user.app_metadata.roles || [];
+            if (roles.includes('admin')) {
+                btnAdminNav.classList.remove('hidden');
+            } else {
+                btnAdminNav.classList.add('hidden');
+            }
             
             document.getElementById('profile-name').textContent = user.user_metadata.full_name || 'User';
             document.getElementById('profile-email').textContent = user.email;
             document.getElementById('input-name').value = user.user_metadata.full_name || '';
-            // Load mock exchange rates
+            // Load real-time exchange rates
             fetchExchangeRates();
         } else {
             btnDashboardNav.classList.add('hidden');
+            btnAdminNav.classList.add('hidden');
             btnLogin.classList.remove('hidden');
             btnSignup.classList.remove('hidden');
             btnLogout.classList.add('hidden');
@@ -187,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             alert("TTS Error: " + err.message);
         } finally {
-            btn.textContent = "Generate Audio (1 Credit)";
+            btn.textContent = "Generate Audio (1 Point)";
             btn.disabled = false;
         }
     });
@@ -228,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             alert("STT Error: " + err.message);
         } finally {
-            btn.textContent = "Transcribe (1 Credit / min)";
+            btn.textContent = "Transcribe (1 Point / min)";
             btn.disabled = false;
         }
     });

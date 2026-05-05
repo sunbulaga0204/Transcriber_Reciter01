@@ -18,7 +18,8 @@
                 <h1>Aurelius</h1>
             </div>
             <div class="header-controls">
-                <div id="pricing-tier" class="pricing-badge">Free Tier: <span id="credit-count">5</span> Credits</div>
+                <div id="pricing-tier" class="pricing-badge">Free Tier: <span id="point-count">3</span> Points</div>
+                <button id="btn-admin-nav" class="nav-link hidden admin-only">Admin Panel</button>
                 <button id="btn-dashboard-nav" class="nav-link hidden">Dashboard</button>
                 <div id="auth-controls">
                     <button id="btn-login" class="nav-link">Log In</button>
@@ -69,7 +70,7 @@
                     </div>
                     
                     <div class="action-bar">
-                        <button id="btn-generate-tts" class="cyber-button primary">Generate Audio (1 Credit)</button>
+                        <button id="btn-generate-tts" class="cyber-button primary">Generate Audio (1 Point)</button>
                         <div class="audio-player-container hidden" id="tts-player-wrapper">
                             <audio id="tts-audio" controls></audio>
                             <a id="tts-download" class="cyber-button secondary" download="aurelius_output.mp3">Download</a>
@@ -107,7 +108,7 @@
                     </div>
 
                     <div class="action-bar">
-                        <button id="btn-transcribe" class="cyber-button primary">Transcribe (1 Credit / min)</button>
+                        <button id="btn-transcribe" class="cyber-button primary">Transcribe (1 Point / min)</button>
                         <button id="btn-summarize" class="cyber-button secondary hidden">One-Click Summary</button>
                     </div>
 
@@ -144,29 +145,75 @@
 
                     <!-- Credits & Top-up Card -->
                     <div class="glass-panel credits-card">
-                        <h2>Credits & Top-up</h2>
+                        <h2>Points & Top-up</h2>
                         <div class="balance-display">
-                            <span class="balance-val" id="dashboard-credit-count">5</span>
-                            <span class="balance-label">Credits Available</span>
+                            <span class="balance-val" id="dashboard-point-count">3</span>
+                            <span class="balance-label">Points Available</span>
                         </div>
                         
                         <div class="topup-options">
-                            <h3>Purchase Credits</h3>
+                            <h3>Purchase Points</h3>
                             <div class="pricing-grid">
                                 <div class="pricing-tier-card">
                                     <h4>Basic</h4>
-                                    <p class="tier-desc">60 Credits</p>
+                                    <p class="tier-desc">60 Points</p>
                                     <p class="price-tag">$5.00 <span class="local-price" id="price-basic-local"></span></p>
                                     <button class="cyber-button primary small btn-buy" data-tier="basic">Top Up</button>
                                 </div>
                                 <div class="pricing-tier-card pro">
                                     <h4>Pro</h4>
-                                    <p class="tier-desc">300 Credits</p>
+                                    <p class="tier-desc">300 Points</p>
                                     <p class="price-tag">$20.00 <span class="local-price" id="price-pro-local"></span></p>
                                     <button class="cyber-button primary small btn-buy" data-tier="pro">Top Up</button>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ADMIN MODE -->
+            <section id="view-admin" class="view-section hidden">
+                <div class="glass-panel">
+                    <h2>Admin Console</h2>
+                    <p class="subtitle">System Overview & User Management</p>
+                    
+                    <div class="admin-stats-grid">
+                        <div class="stat-card">
+                            <p class="stat-label">Total Users</p>
+                            <p class="stat-val">1</p>
+                        </div>
+                        <div class="stat-card">
+                            <p class="stat-label">Points Distributed</p>
+                            <p class="stat-val">3</p>
+                        </div>
+                        <div class="stat-card">
+                            <p class="stat-label">API Health</p>
+                            <p class="stat-val status-ok">Stable</p>
+                        </div>
+                    </div>
+
+                    <div class="admin-table-wrapper">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Points</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Current User (Admin)</td>
+                                    <td><span class="badge admin">Admin</span></td>
+                                    <td>3</td>
+                                    <td>Active</td>
+                                    <td><button class="cyber-button secondary small">Manage</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
