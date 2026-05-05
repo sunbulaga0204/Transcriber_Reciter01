@@ -129,6 +129,14 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUserUI(null);
             switchView(viewReader);
         });
+
+        // Fix for browser back button (BFCache)
+        window.addEventListener('pageshow', () => {
+            if (window.netlifyIdentity.currentUser) {
+                const user = window.netlifyIdentity.currentUser();
+                updateUserUI(user);
+            }
+        });
     }
 
     function updatePointsDisplay(points) {
@@ -198,16 +206,45 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Real Exchange Rates ---
+    let currentRates = { IDR: 15500, MYR: 4.7, SAR: 3.75, USD: 1 }; // Fallbacks
+    const currencySelector = document.getElementById('currency-selector');
+
     async function fetchExchangeRates() {
         try {
             const res = await fetch('/api/pricing');
-            const data = await res.json();
-            const rates = data.rates;
-            document.getElementById('price-basic-local').textContent = `~ Rp ${(5 * rates.IDR).toLocaleString()}`;
-            document.getElementById('price-pro-local').textContent = `~ Rp ${(20 * rates.IDR).toLocaleString()}`;
+            if (res.ok) {
+                const data = await res.json();
+                if (data.rates) currentRates = data.rates;
+            }
         } catch (e) {
             console.error('Pricing error:', e);
+        } finally {
+            updatePrices();
         }
+    }
+
+    function updatePrices() {
+        if (!currencySelector) return;
+        const currency = currencySelector.value;
+        const rate = currentRates[currency] || 1;
+        
+        let prefix = currency === 'IDR' ? 'Rp ' : currency === 'MYR' ? 'RM ' : currency === 'SAR' ? '﷼ ' : '$';
+        
+        const formatPrice = (usd) => {
+            if (currency === 'USD') return ''; // Don't show local if USD is selected
+            const converted = usd * rate;
+            return `~ ${prefix}${converted.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+        };
+
+        const basicEl = document.getElementById('price-basic-local');
+        const proEl = document.getElementById('price-pro-local');
+        
+        if (basicEl) basicEl.textContent = formatPrice(5);
+        if (proEl) proEl.textContent = formatPrice(20);
+    }
+
+    if (currencySelector) {
+        currencySelector.addEventListener('change', updatePrices);
     }
 
     // --- WhatsApp Top-up Buttons ---
