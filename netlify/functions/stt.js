@@ -95,7 +95,7 @@ exports.handler = async (event, context) => {
 Ensure the transcription is highly accurate.`;
 
         const response = await axios.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-native-audio-preview-12-2025:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
           {
             contents: [
               {

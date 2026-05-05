@@ -67,16 +67,15 @@ exports.handler = async (event, context) => {
   let apiSuccess = false;
   try {
     // Build instruction for Gemini Audio
-    const systemInstruction = prompt 
-      ? `You are a high-fidelity voice actor. ${prompt}\n\nPlease read the following text exactly as written, following the director instructions.`
-      : `You are a high-fidelity voice actor. Please read the following text naturally and clearly.`;
+    const finalPrompt = prompt 
+      ? `Please read the following text exactly as written, following these director instructions: [${prompt}]. Text: ${text}`
+      : `Please read the following text out loud: ${text}`;
 
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
       {
-        system_instruction: { parts: [{ text: systemInstruction }] },
         contents: [
-          { role: 'user', parts: [{ text }] }
+          { role: 'user', parts: [{ text: finalPrompt }] }
         ],
         generationConfig: {
           responseModalities: ["AUDIO"]
