@@ -3,14 +3,7 @@ const { validateJWT } = require('./utils/auth');
 const { deductPoint, refundPoint } = require('./utils/points');
 const { checkRateLimit } = require('./utils/ratelimit');
 
-const MAX_TEXT_CHARS = 4096; // OpenAI TTS limit
-
-const VOICE_MAP = {
-  'british-rp': 'af_bella',      // Kokoro British-sounding female
-  'australian': 'am_adam',       // Kokoro American/natural male
-  'arabic': 'af_sarah',          
-  'malay': 'am_michael',
-};
+const MAX_TEXT_CHARS = 4096;
 
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
@@ -40,7 +33,7 @@ exports.handler = async (event, context) => {
   try { body = JSON.parse(event.body); }
   catch { return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON body' }) }; }
 
-  const { text, voice = 'british-rp', speed = 1.0, prompt } = body;
+  const { text, prompt } = body; // Voice and speed can be embedded in the prompt for Gemini
 
   if (!text || typeof text !== 'string' || text.trim().length === 0) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Text is required.' }) };
@@ -49,7 +42,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 413,
       body: JSON.stringify({
-        error: `Text exceeds the limit of ${MAX_TEXT_CHARS} characters (~700 words). Please split your text into smaller sections.`
+        error: `Text exceeds the limit of ${MAX_TEXT_CHARS} characters.`
       })
     };
   }
@@ -65,70 +58,71 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     await refundPoint(userId, 1);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error: Missing API key.' }) };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error: Missing GOOGLE_API_KEY.' }) };
   }
-
-  // Build the input text with director prompt if provided
-  const inputText = prompt ? `[${prompt}]\n\n${text}` : text;
-  const ttsVoice = VOICE_MAP[voice] || 'af_heart';
 
   let apiSuccess = false;
   try {
-    console.log(`[TTS] User=${userId}, Voice=${voice}->${ttsVoice}, Speed=${speed}`);
+    // Build instruction for Gemini Audio
+    const systemInstruction = prompt 
+      ? `You are a high-fidelity voice actor. ${prompt}\n\nPlease read the following text exactly as written, following the director instructions.`
+      : `You are a high-fidelity voice actor. Please read the following text naturally and clearly.`;
 
     const response = await axios.post(
-      'https://openrouter.ai/api/v1/audio/speech',
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
       {
-        model: 'hexgrad/kokoro-82m',
-        input: inputText,
-        voice: ttsVoice,
-        speed: parseFloat(speed),
-        response_format: 'mp3'
+        system_instruction: { parts: [{ text: systemInstruction }] },
+        contents: [
+          { role: 'user', parts: [{ text }] }
+        ],
+        generationConfig: {
+          responseModalities: ["AUDIO"]
+        }
       },
       {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.SITE_URL,
-          'X-Title': 'Aurelius Audio Studio'
-        },
-        responseType: 'arraybuffer',
+        headers: { 'Content-Type': 'application/json' },
         timeout: 30000
       }
     );
 
     apiSuccess = true;
-    const base64Audio = Buffer.from(response.data).toString('base64');
+    
+    // Extract base64 audio from Gemini's response
+    // Response format: candidates[0].content.parts[0].inlineData.data (base64)
+    const candidates = response.data.candidates;
+    if (!candidates || candidates.length === 0) {
+      throw new Error("No candidates returned from Gemini");
+    }
+    
+    const parts = candidates[0].content.parts;
+    const audioPart = parts.find(p => p.inlineData && p.inlineData.mimeType.startsWith('audio/'));
+    
+    if (!audioPart) {
+      throw new Error("Gemini responded, but did not return audio inlineData.");
+    }
+
+    const base64Audio = audioPart.inlineData.data;
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         audioBase64: base64Audio,
-        mimeType: 'audio/mp3',
+        mimeType: audioPart.inlineData.mimeType || 'audio/wav',
         pointsRemaining: deduction.remaining
       })
     };
 
   } catch (error) {
     const statusCode = error.response?.status;
-    let errMessage = error.message;
-
-    // Try to parse ArrayBuffer error response
-    if (error.response?.data) {
-      try {
-        const decoded = Buffer.from(error.response.data).toString('utf8');
-        const parsed = JSON.parse(decoded);
-        errMessage = parsed.error?.message || parsed.error || errMessage;
-      } catch (_) {}
-    }
+    const errMessage = error.response?.data?.error?.message || error.message;
 
     if (!apiSuccess) {
       await refundPoint(userId, 1);
-      console.warn(`[TTS] API failed for user=${userId}. Point refunded. Status=${statusCode}, Reason=${errMessage}`);
+      console.warn(`[TTS] Google API failed. Point refunded. Status=${statusCode}, Reason=${errMessage}`);
       return {
         statusCode: 502,
         body: JSON.stringify({

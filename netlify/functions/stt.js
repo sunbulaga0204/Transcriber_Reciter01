@@ -1,4 +1,3 @@
-const FormData = require('form-data');
 const axios = require('axios');
 const busboy = require('busboy');
 const { validateJWT } = require('./utils/auth');
@@ -6,10 +5,6 @@ const { deductPoint, refundPoint } = require('./utils/points');
 const { checkRateLimit } = require('./utils/ratelimit');
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
-
-const LANG_MAP = {
-  'en': 'en', 'ar': 'ar', 'ms': 'ms', 'id': 'id'
-};
 
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
@@ -45,19 +40,18 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
     await refundPoint(userId, 1);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error: Missing API key.' }) };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error: Missing GOOGLE_API_KEY.' }) };
   }
 
-  // --- 4. Parse multipart form with 10MB enforcement ---
+  // --- 4. Parse multipart form to get audio buffer ---
   return new Promise((resolve) => {
     const bb = busboy({ headers: event.headers, limits: { fileSize: MAX_FILE_BYTES } });
 
     let lang = 'en';
     let fileBuffer = Buffer.alloc(0);
-    let fileName = 'audio.webm';
     let mimeType = 'audio/webm';
     let fileSizeExceeded = false;
 
@@ -66,7 +60,6 @@ exports.handler = async (event, context) => {
     });
 
     bb.on('file', (name, file, info) => {
-      fileName = info.filename || fileName;
       mimeType = info.mimeType || mimeType;
       file.on('data', (data) => { fileBuffer = Buffer.concat([fileBuffer, data]); });
       file.on('limit', () => { fileSizeExceeded = true; });
@@ -78,7 +71,7 @@ exports.handler = async (event, context) => {
         return resolve({
           statusCode: 413,
           body: JSON.stringify({
-            error: 'Audio file exceeds 10MB. Please split your recording into smaller parts or compress it. Your point has been refunded.'
+            error: 'Audio file exceeds 10MB. Please split your recording into smaller parts. Your point has been refunded.'
           })
         });
       }
@@ -93,88 +86,83 @@ exports.handler = async (event, context) => {
 
       let apiSuccess = false;
       try {
-        const fileSizeMB = (fileBuffer.length / 1024 / 1024).toFixed(2);
-        console.log(`[STT] User=${userId}, File=${fileName} (${fileSizeMB}MB), Lang=${lang}`);
+        console.log(`[STT] User=${userId}, Size=${(fileBuffer.length / 1024 / 1024).toFixed(2)}MB, Lang=${lang}`);
 
-        // Use OpenRouter's Whisper endpoint for transcription
-        const form = new FormData();
-        form.append('file', fileBuffer, { filename: fileName, contentType: mimeType });
-        form.append('model', 'openai/whisper-1');
-        form.append('language', LANG_MAP[lang] || 'en');
-        form.append('response_format', 'verbose_json');
-        form.append('timestamp_granularities[]', 'segment');
+        const base64Data = fileBuffer.toString('base64');
+        const prompt = `Please act as a professional transcriber. 
+1. Transcribe the provided audio file exactly as spoken. Format it with timestamps like [00:00] for different segments or speakers.
+2. After the transcription, provide a line break with "---SUMMARY---" and then write a concise 1-paragraph summary of the audio.
+Ensure the transcription is highly accurate.`;
 
-        const transcriptRes = await axios.post(
-          'https://openrouter.ai/api/v1/audio/transcriptions',
-          form,
+        const response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-native-audio-preview-12-2025:generateContent?key=${apiKey}`,
           {
-            headers: {
-              'Authorization': `Bearer ${apiKey}`,
-              'HTTP-Referer': process.env.SITE_URL,
-              'X-Title': 'Aurelius Audio Studio',
-              ...form.getHeaders()
-            },
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: mimeType,
+                      data: base64Data
+                    }
+                  },
+                  { text: prompt }
+                ]
+              }
+            ]
+          },
+          {
+            headers: { 'Content-Type': 'application/json' },
             timeout: 120000,
             maxContentLength: MAX_FILE_BYTES * 2
           }
         );
 
         apiSuccess = true;
-        const whisperData = transcriptRes.data;
-
-        // Format transcript with timestamps from Whisper's segment data
-        let formattedTranscript = '';
-        if (whisperData.segments && whisperData.segments.length > 0) {
-          whisperData.segments.forEach((seg, i) => {
-            const ts = formatTimestamp(seg.start);
-            const speakerNum = (i % 2) + 1; // Simple alternating speaker diarization
-            formattedTranscript += `<p><span class="timestamp">[${ts}]</span> <span class="speaker">Speaker ${speakerNum}:</span> ${seg.text.trim()}</p>\n`;
-          });
-        } else {
-          formattedTranscript = `<p>${whisperData.text}</p>`;
+        
+        // Parse response
+        const candidates = response.data.candidates;
+        if (!candidates || candidates.length === 0) {
+            throw new Error("No candidates returned from Gemini");
+        }
+        
+        const fullText = candidates[0].content.parts.map(p => p.text).join(' ');
+        
+        // Split text into transcript and summary
+        const splitTag = '---SUMMARY---';
+        let transcript = fullText;
+        let summary = 'Summary generation skipped or format failed.';
+        
+        if (fullText.includes(splitTag)) {
+            const parts = fullText.split(splitTag);
+            transcript = parts[0].trim();
+            summary = parts[1].trim();
         }
 
-        // Generate summary using a text model via OpenRouter
-        let summary = 'Summary generation skipped.';
-        try {
-          const summaryRes = await axios.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            {
-              model: 'google/gemini-flash-1.5',
-              messages: [
-                { role: 'system', content: 'You are a research assistant. Summarize the following transcript in one concise paragraph, highlighting the key points and topics discussed.' },
-                { role: 'user', content: whisperData.text }
-              ],
-              max_tokens: 300
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': process.env.SITE_URL,
-                'X-Title': 'Aurelius Audio Studio'
-              },
-              timeout: 30000
-            }
-          );
-          summary = summaryRes.data?.choices?.[0]?.message?.content || summary;
-        } catch (summaryErr) {
-          console.warn('[STT] Summary generation failed (non-critical):', summaryErr.message);
-        }
+        // Format transcript string into paragraphs/HTML
+        const formattedTranscript = transcript.split('\n')
+            .filter(line => line.trim().length > 0)
+            .map(line => `<p>${line.replace(/\[(\d{2}:\d{2})\]/g, '<span class="timestamp">[$1]</span>')}</p>`)
+            .join('');
 
         return resolve({
           statusCode: 200,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transcript: formattedTranscript, summary, pointsRemaining: deduction.remaining })
+          body: JSON.stringify({ 
+              transcript: formattedTranscript, 
+              summary, 
+              pointsRemaining: deduction.remaining 
+          })
         });
 
       } catch (error) {
         const statusCode = error.response?.status;
-        const errMessage = error.response?.data?.error?.message || error.response?.data?.error || error.message;
+        const errMessage = error.response?.data?.error?.message || error.message;
 
         if (!apiSuccess) {
           await refundPoint(userId, 1);
-          console.warn(`[STT] API failed for user=${userId}. Point refunded. Status=${statusCode}, Reason=${errMessage}`);
+          console.warn(`[STT] Google API failed for user=${userId}. Point refunded. Status=${statusCode}, Reason=${errMessage}`);
           return resolve({
             statusCode: 502,
             body: JSON.stringify({
@@ -191,10 +179,3 @@ exports.handler = async (event, context) => {
     bb.end();
   });
 };
-
-function formatTimestamp(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return [h, m, s].map(n => String(n).padStart(2, '0')).join(':');
-}
