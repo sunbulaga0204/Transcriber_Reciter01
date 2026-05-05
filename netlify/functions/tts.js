@@ -6,10 +6,10 @@ const { checkRateLimit } = require('./utils/ratelimit');
 const MAX_TEXT_CHARS = 4096; // OpenAI TTS limit
 
 const VOICE_MAP = {
-  'british-rp': 'onyx',      // Deep, formal British-sounding
-  'australian': 'nova',       // Friendly, natural
-  'arabic': 'shimmer',
-  'malay': 'nova',
+  'british-rp': 'af_bella',      // Kokoro British-sounding female
+  'australian': 'am_adam',       // Kokoro American/natural male
+  'arabic': 'af_sarah',          
+  'malay': 'am_michael',
 };
 
 exports.handler = async (event, context) => {
@@ -73,7 +73,7 @@ exports.handler = async (event, context) => {
 
   // Build the input text with director prompt if provided
   const inputText = prompt ? `[${prompt}]\n\n${text}` : text;
-  const ttsVoice = VOICE_MAP[voice] || 'onyx';
+  const ttsVoice = VOICE_MAP[voice] || 'af_heart';
 
   let apiSuccess = false;
   try {
@@ -82,7 +82,7 @@ exports.handler = async (event, context) => {
     const response = await axios.post(
       'https://openrouter.ai/api/v1/audio/speech',
       {
-        model: 'google/gemini-3.1-flash-tts-preview',
+        model: 'hexgrad/kokoro-82m',
         input: inputText,
         voice: ttsVoice,
         speed: parseFloat(speed),
