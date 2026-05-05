@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aurelius Admin Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css">
+    <script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <style>
+        body { background-color: #000; }
+        .admin-gate { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
+        .gate-card { background: #181818; border: 1px solid #333; border-radius: 12px; padding: 3rem; text-align: center; max-width: 400px; }
+        .gate-card h2 { color: #1DB954; margin-bottom: 0.5rem; }
+        .gate-card p { color: #B3B3B3; margin-bottom: 2rem; }
+        #admin-panel-content { display: none; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <span class="logo-icon">●</span>
+                <h1>Aurelius <span style="color:#B3B3B3; font-size:0.7em;">/ Admin</span></h1>
+            </div>
+            <div class="header-controls">
+                <a href="/" class="nav-link">← Back to App</a>
+                <button id="admin-logout" class="nav-link hidden">Log Out</button>
+            </div>
+        </header>
+
+        <!-- Gate: shown while checking auth -->
+        <div class="admin-gate" id="admin-gate">
+            <div class="gate-card">
+                <h2>Admin Access Required</h2>
+                <p>You must be logged in with an admin account to view this page.</p>
+                <button id="gate-login" class="cyber-button primary">Log In</button>
+            </div>
+        </div>
+
+        <!-- Admin Panel: hidden until verified -->
+        <div id="admin-panel-content">
+            <div class="glass-panel" style="margin-bottom:2rem;">
+                <h2>Admin Console</h2>
+                <p class="subtitle" id="admin-welcome">Welcome, Admin</p>
+
+                <div class="admin-stats-grid" id="admin-stats">
+                    <div class="stat-card">
+                        <p class="stat-label">Total Users</p>
+                        <p class="stat-val" id="stat-users">—</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-label">Points Distributed</p>
+                        <p class="stat-val" id="stat-points">—</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="stat-label">API Status</p>
+                        <p class="stat-val status-ok">Stable</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <h2 style="margin-bottom:1.5rem;">User Management</h2>
+                <div style="display:flex; gap:1rem; margin-bottom:1.5rem;">
+                    <input type="email" id="topup-email" class="cyber-input" placeholder="User email to top up">
+                    <input type="number" id="topup-amount" class="cyber-input" placeholder="Points" style="width:120px;">
+                    <button id="btn-topup-user" class="cyber-button primary">Top Up</button>
+                </div>
+                <div id="topup-message" style="color:#1DB954; font-size:0.85rem; margin-bottom:1rem;"></div>
+
+                <div class="admin-table-wrapper">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Points</th>
+                                <th>Tier</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body">
+                            <tr><td colspan="5" style="color:#B3B3B3; text-align:center;">Loading users...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Guard: Verify admin role before showing the panel
+        if (window.netlifyIdentity) {
+            window.netlifyIdentity.on('init', user => handleAdminAuth(user));
+            window.netlifyIdentity.on('login', user => handleAdminAuth(user));
+            window.netlifyIdentity.on('logout', () => {
+                document.getElementById('admin-panel-content').style.display = 'none';
+                document.getElementById('admin-gate').style.display = 'flex';
+                document.getElementById('admin-logout').classList.add('hidden');
+            });
+        }
+
+        document.getElementById('gate-login').addEventListener('click', () => {
+            window.netlifyIdentity.open('login');
+        });
+        document.getElementById('admin-logout').addEventListener('click', () => {
+            window.netlifyIdentity.logout();
+        });
+
+        function handleAdminAuth(user) {
+            if (!user) return;
+            const roles = user.app_metadata?.roles || [];
+            if (!roles.includes('admin')) {
+                document.getElementById('admin-gate').innerHTML = `
+                    <div class="gate-card">
+                        <h2>Access Denied</h2>
+                        <p>Your account does not have admin privileges.</p>
+                        <a href="/" class="cyber-button secondary">Return to App</a>
+                    </div>`;
+                return;
+            }
+            // Admin verified
+            document.getElementById('admin-gate').style.display = 'none';
+            document.getElementById('admin-panel-content').style.display = 'block';
+            document.getElementById('admin-logout').classList.remove('hidden');
+            document.getElementById('admin-welcome').textContent = `Welcome, ${user.user_metadata?.full_name || user.email}`;
+            loadAdminData(user);
+        }
+
+        async function loadAdminData(user) {
+            try {
+                const token = user.token?.access_token;
+                const res = await fetch('/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error('Failed to load admin data');
+                const data = await res.json();
+                document.getElementById('stat-users').textContent = data.userCount ?? '—';
+                document.getElementById('stat-points').textContent = data.totalPoints ?? '—';
+                renderUserTable(data.users || []);
+            } catch (e) {
+                console.error('Admin data error:', e);
+                document.getElementById('stat-users').textContent = 'N/A';
+                document.getElementById('stat-points').textContent = 'N/A';
+            }
+        }
+
+        function renderUserTable(users) {
+            const tbody = document.getElementById('user-table-body');
+            if (!users.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="color:#B3B3B3; text-align:center;">No user data available yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.email}</td>
+                    <td><span class="badge admin">${u.roles?.join(', ') || 'user'}</span></td>
+                    <td>${u.points ?? '—'}</td>
+                    <td>${u.tier ?? 'free'}</td>
+                    <td><button class="cyber-button secondary small" onclick="handleTopUp('${u.email}')">Top Up</button></td>
+                </tr>
+            `).join('');
+        }
+
+        async function handleTopUp(email) {
+            document.getElementById('topup-email').value = email;
+            document.getElementById('topup-amount').focus();
+        }
+
+        document.getElementById('btn-topup-user').addEventListener('click', async () => {
+            const email = document.getElementById('topup-email').value.trim();
+            const amount = parseInt(document.getElementById('topup-amount').value);
+            if (!email || !amount || amount <= 0) return alert('Please enter a valid email and amount.');
+
+            const user = window.netlifyIdentity.currentUser();
+            const token = user?.token?.access_token;
+
+            try {
+                const res = await fetch('/api/admin/topup', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, amount })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                document.getElementById('topup-message').textContent = `✓ ${amount} points added to ${email}. New balance: ${data.newBalance}`;
+                loadAdminData(user);
+            } catch (e) {
+                document.getElementById('topup-message').textContent = `✗ Error: ${e.message}`;
+                document.getElementById('topup-message').style.color = '#ff6b6b';
+            }
+        });
+    </script>
+</body>
+</html>

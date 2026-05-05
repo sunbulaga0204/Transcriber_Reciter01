@@ -2,7 +2,46 @@
   functions = "netlify/functions"
   publish = "."
 
+# Main API routes
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/api/tts"
+  to = "/.netlify/functions/tts"
+  status = 200
+
+[[redirects]]
+  from = "/api/stt"
+  to = "/.netlify/functions/stt"
+  status = 200
+
+[[redirects]]
+  from = "/api/pricing"
+  to = "/.netlify/functions/pricing"
+  status = 200
+
+[[redirects]]
+  from = "/api/points"
+  to = "/.netlify/functions/points-get"
+  status = 200
+
+# Admin API routes (role-checked in functions)
+[[redirects]]
+  from = "/api/admin/topup"
+  to = "/.netlify/functions/admin-topup"
+  status = 200
+
+[[redirects]]
+  from = "/api/admin/stats"
+  to = "/.netlify/functions/admin-stats"
+  status = 200
+
+# Admin page route
+[[redirects]]
+  from = "/admin"
+  to = "/admin/index.html"
+  status = 200
+
+# SPA fallback
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
   status = 200
