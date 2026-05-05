@@ -15,10 +15,15 @@
         <header class="app-header">
             <div class="logo">
                 <span class="logo-icon">●</span>
-                <h1>Aurelius</h1>
+                <div class="logo-text">
+                    <h1>Aurelius</h1>
+                    <p class="logo-subtitle">help your research and drafting</p>
+                    <p class="logo-powered">Powered by Gemini 3.1</p>
+                </div>
             </div>
             <div class="header-controls">
                 <div id="pricing-tier" class="pricing-badge">Free Tier: <span id="point-count">3</span> Points</div>
+                <div id="user-greeting" class="user-greeting hidden">Hello, <span id="header-user-name"></span></div>
                 <button id="btn-admin-nav" class="nav-link hidden admin-only">Admin Panel</button>
                 <button id="btn-dashboard-nav" class="nav-link hidden">Dashboard</button>
                 <button id="btn-topup-nav" class="cyber-button primary small hidden">⚡ Top Up</button>
@@ -154,18 +159,23 @@
                         
                         <div class="topup-options">
                             <h3>Purchase Points</h3>
+                            <p style="color: #b3b3b3; font-size: 0.9rem; margin-bottom: 1.5rem;">
+                                Top-ups are handled manually via WhatsApp or Bank Transfer. Please contact us to proceed.
+                                <br><br>
+                                Need help? Email us: <a href="mailto:angzuhri@gmail.com" style="color:#1DB954;">angzuhri@gmail.com</a> / <a href="mailto:bookabsorbers@gmail.com" style="color:#1DB954;">bookabsorbers@gmail.com</a>
+                            </p>
                             <div class="pricing-grid">
                                 <div class="pricing-tier-card">
                                     <h4>Basic</h4>
                                     <p class="tier-desc">60 Points</p>
                                     <p class="price-tag">$5.00 <span class="local-price" id="price-basic-local"></span></p>
-                                    <button class="cyber-button primary small btn-buy" data-tier="basic">Top Up</button>
+                                    <button class="cyber-button primary small btn-buy-wa" data-tier="Basic" data-points="60">Buy via WhatsApp</button>
                                 </div>
                                 <div class="pricing-tier-card pro">
                                     <h4>Pro</h4>
                                     <p class="tier-desc">300 Points</p>
                                     <p class="price-tag">$20.00 <span class="local-price" id="price-pro-local"></span></p>
-                                    <button class="cyber-button primary small btn-buy" data-tier="pro">Top Up</button>
+                                    <button class="cyber-button primary small btn-buy-wa" data-tier="Pro" data-points="300">Buy via WhatsApp</button>
                                 </div>
                             </div>
                         </div>

@@ -150,6 +150,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateUserUI(user) {
         if (user) {
+            document.getElementById('user-greeting').classList.remove('hidden');
+            const userName = user.user_metadata?.full_name || user.email.split('@')[0];
+            document.getElementById('header-user-name').textContent = userName;
+            
             btnDashboardNav.classList.remove('hidden');
             btnTopupNav.classList.remove('hidden');
             btnLogin.classList.add('hidden');
@@ -159,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const roles = user.app_metadata?.roles || [];
             btnAdminNav.classList.toggle('hidden', !roles.includes('admin'));
 
-            document.getElementById('profile-name').textContent = user.user_metadata?.full_name || 'User';
+            document.getElementById('profile-name').textContent = userName;
             document.getElementById('profile-email').textContent = user.email;
             document.getElementById('input-name').value = user.user_metadata?.full_name || '';
 
@@ -167,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshPoints();
             fetchExchangeRates();
         } else {
+            document.getElementById('user-greeting').classList.add('hidden');
             btnDashboardNav.classList.add('hidden');
             btnTopupNav.classList.add('hidden');
             btnAdminNav.classList.add('hidden');
@@ -205,11 +210,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Top-up Buttons ---
-    document.querySelectorAll('.btn-buy').forEach(btn => {
+    // --- WhatsApp Top-up Buttons ---
+    document.querySelectorAll('.btn-buy-wa').forEach(btn => {
         btn.addEventListener('click', () => {
-            const tier = btn.dataset.tier;
-            alert(`Redirecting to payment gateway for ${tier.toUpperCase()} tier... (Payment integration pending)`);
+            const user = window.netlifyIdentity.currentUser();
+            if (!user) return alert('Please log in first to top up.');
+            
+            const email = user.email;
+            // The predefined WhatsApp message
+            const msg = encodeURIComponent(`Saya mau top-up point untuk menggunakan Aurelius. Email akun saya: ${email}`);
+            window.open(`https://wa.me/6282168501686?text=${msg}`, '_blank');
         });
     });
 

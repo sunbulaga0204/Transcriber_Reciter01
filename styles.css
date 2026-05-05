@@ -60,12 +60,38 @@ h1 {
     font-size: 1.5rem;
     font-weight: 700;
     letter-spacing: -0.5px;
+    margin-bottom: 2px;
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-subtitle {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
+.logo-powered {
+    font-size: 0.7rem;
+    color: var(--spotify-green);
+    margin: 0;
+    font-weight: 600;
 }
 
 .header-controls {
     display: flex;
     align-items: center;
     gap: 1rem;
+}
+
+.user-greeting {
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 #auth-controls {
