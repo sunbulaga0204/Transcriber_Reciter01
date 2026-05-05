@@ -281,17 +281,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ text, voice, speed, prompt })
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
+            if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
 
             const audioUrl = data.audioUrl || (data.audioBase64 ? `data:audio/mp3;base64,${data.audioBase64}` : null);
             if (audioUrl) {
                 document.getElementById('tts-audio').src = audioUrl;
                 document.getElementById('tts-download').href = audioUrl;
                 document.getElementById('tts-player-wrapper').classList.remove('hidden');
+            } else {
+                alert('Audio was generated but no playback URL was returned. The model may not support audio output yet.');
             }
             if (data.pointsRemaining !== undefined) updatePointsDisplay(data.pointsRemaining);
         } catch (err) {
-            alert('Error: ' + err.message);
+            alert('TTS Error: ' + (err.message || 'Unknown error. Check the browser console for details.'));
+            console.error('[TTS Error]', err);
         } finally {
             btn.textContent = 'Generate Audio (1 Point)';
             btn.disabled = false;
@@ -320,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
+            if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
 
             document.getElementById('stt-results').classList.remove('hidden');
             document.getElementById('btn-summarize').classList.remove('hidden');
@@ -333,7 +336,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data.pointsRemaining !== undefined) updatePointsDisplay(data.pointsRemaining);
         } catch (err) {
-            alert('Error: ' + err.message);
+            alert('STT Error: ' + (err.message || 'Unknown error. Check the browser console for details.'));
+            console.error('[STT Error]', err);
         } finally {
             btn.textContent = 'Transcribe (1 Point / min)';
             btn.disabled = false;
