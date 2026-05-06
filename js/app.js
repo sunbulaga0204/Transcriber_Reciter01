@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Mode Toggle Logic
+    // --- State & Selectors ---
     const btnReader = document.getElementById('btn-reader');
     const btnTranscriber = document.getElementById('btn-transcriber');
     const viewReader = document.getElementById('view-reader');
@@ -9,11 +9,99 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleTrack = document.querySelector('.toggle-track');
     const btnDashboardNav = document.getElementById('btn-dashboard-nav');
     const btnAdminNav = document.getElementById('btn-admin-nav');
+    const btnLogout = document.getElementById('btn-logout');
+    const btnTopupNav = document.getElementById('btn-topup-nav');
+    const fileInput = document.getElementById('stt-file');
+    const fileNameDisplay = document.getElementById('selected-file-name');
+    const modal = document.getElementById('summary-modal');
+    const closeBtn = document.getElementById('close-modal');
 
-    btnAdminNav.addEventListener('click', () => {
-        showView('view-admin');
-        loadAdminUsers();
-    });
+    // --- Auth Helpers ---
+    function getToken() {
+        return localStorage.getItem('aurelius_token');
+    }
+
+    function authHeaders(extra = {}) {
+        const token = getToken();
+        return token
+            ? { 'Authorization': `Bearer ${token}`, ...extra }
+            : { ...extra };
+    }
+
+    // --- Core Logic Functions ---
+    const switchView = (targetView, scrollToCredits = false) => {
+        [viewReader, viewTranscriber, viewDashboard, viewAdmin].forEach(view => view.classList.add('hidden'));
+        targetView.classList.remove('hidden');
+
+        const isDashOrAdmin = targetView === viewDashboard || targetView === viewAdmin;
+        const toggleContainer = document.querySelector('.mode-toggle-container');
+        if (toggleContainer) toggleContainer.classList.toggle('hidden', isDashOrAdmin);
+
+        if (btnDashboardNav) {
+            btnDashboardNav.textContent = isDashOrAdmin ? '← Back' : 'Dashboard';
+            btnDashboardNav.classList.toggle('active-nav', targetView === viewDashboard);
+        }
+        if (btnAdminNav) {
+            btnAdminNav.classList.toggle('active-nav', targetView === viewAdmin);
+        }
+
+        if (scrollToCredits && targetView === viewDashboard) {
+            setTimeout(() => {
+                document.getElementById('pricing-tiers')?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+    };
+
+    function updatePointsDisplay(points) {
+        const el1 = document.getElementById('point-count');
+        const el2 = document.getElementById('dashboard-point-count');
+        if (el1) el1.textContent = points;
+        if (el2) el2.textContent = points;
+    }
+
+    async function refreshPoints() {
+        try {
+            const res = await fetch('/api/points', { headers: authHeaders() });
+            if (!res.ok) return;
+            const data = await res.json();
+            updatePointsDisplay(data.points);
+            
+            // Also update dashboard fields
+            const pName = document.getElementById('profile-name');
+            const pEmail = document.getElementById('profile-email');
+            if (pName && data.email) pName.textContent = data.email.split('@')[0];
+            if (pEmail && data.email) pEmail.textContent = data.email;
+        } catch (e) {
+            console.error('Points refresh error:', e);
+        }
+    }
+
+    function updateUserUI(user) {
+        const greeting = document.getElementById('user-greeting');
+        const nameSpan = document.getElementById('header-user-name');
+        const googleBtnContainer = document.getElementById('google-signin-btn');
+        
+        if (user) {
+            if (nameSpan) nameSpan.textContent = user.name || user.email.split('@')[0];
+            if (greeting) greeting.classList.remove('hidden');
+            if (btnLogout) btnLogout.classList.remove('hidden');
+            if (btnDashboardNav) btnDashboardNav.classList.remove('hidden');
+            if (googleBtnContainer) googleBtnContainer.classList.add('hidden');
+            
+            const isAdmin = user.roles && user.roles.includes('admin');
+            if (btnAdminNav) btnAdminNav.classList.toggle('hidden', !isAdmin);
+            
+            refreshPoints();
+            fetchExchangeRates();
+        } else {
+            if (greeting) greeting.classList.add('hidden');
+            if (btnLogout) btnLogout.classList.add('hidden');
+            if (btnDashboardNav) btnDashboardNav.classList.add('hidden');
+            if (btnAdminNav) btnAdminNav.classList.add('hidden');
+            if (googleBtnContainer) googleBtnContainer.classList.remove('hidden');
+            updatePointsDisplay(3);
+        }
+    }
 
     async function loadAdminUsers() {
         const tbody = document.querySelector('.admin-table tbody');
@@ -39,18 +127,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 tbody.appendChild(tr);
             });
 
-            // Handle edit buttons
             document.querySelectorAll('.btn-edit-points').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
-                    const target = e.target;
-                    const id = target.dataset.id;
-                    const newPoints = prompt('Enter new points balance:', target.dataset.points);
+                    const id = e.target.dataset.id;
+                    const newPoints = prompt('Enter new points balance:', e.target.dataset.points);
                     if (newPoints === null) return;
                     
                     const res = await fetch('/api/admin/update-points', {
                         method: 'POST',
                         headers: authHeaders({ 'Content-Type': 'application/json' }),
-                        body: JSON.stringify({ userId: id, points: parseInt(newPoints), tier: target.dataset.tier })
+                        body: JSON.stringify({ userId: id, points: parseInt(newPoints), tier: e.target.dataset.tier })
                     });
                     if (res.ok) {
                         alert('Points updated!');
@@ -62,30 +148,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = `<tr><td colspan="5" style="color:red">Error: ${err.message}</td></tr>`;
         }
     }
-    const btnLogout = document.getElementById('btn-logout');
-    const btnTopupNav = document.getElementById('btn-topup-nav');
 
-    // --- Auth helpers ---
-    function getToken() {
-        return localStorage.getItem('aurelius_token');
-    }
-
-    function authHeaders(extra = {}) {
-        const token = getToken();
-        return token
-            ? { 'Authorization': `Bearer ${token}`, ...extra }
-            : { ...extra };
-    }
-
-    // --- Auth button listeners ---
-    btnLogout.addEventListener('click', () => {
-        localStorage.removeItem('aurelius_token');
-        localStorage.removeItem('aurelius_user');
-        updateUserUI(null);
-        switchView(viewReader);
-    });
-
-    // --- Google Identity Services Initialization ---
+    // --- Google Auth Integration ---
     window.handleGoogleCredential = async (response) => {
         try {
             const res = await fetch('/api/auth/google', {
@@ -124,227 +188,119 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     }
 
-    // Restore session on load
-    const savedUser = localStorage.getItem('aurelius_user');
-    if (savedUser) {
-        try {
-            updateUserUI(JSON.parse(savedUser));
-        } catch (e) {
-            localStorage.removeItem('aurelius_user');
-        }
-    }
-
-    window.onload = () => {
-        initGoogleAuth();
-    };
-
-    function updatePointsDisplay(points) {
-        document.getElementById('point-count').textContent = points;
-        const el = document.getElementById('dashboard-point-count');
-        if (el) el.textContent = points;
-    }
-
-    function updateUserUI(user) {
-        const greeting = document.getElementById('user-greeting');
-        const nameSpan = document.getElementById('header-user-name');
-        const btnLogout = document.getElementById('btn-logout');
-        const googleBtnContainer = document.getElementById('google-signin-btn');
-        const btnAdmin = document.getElementById('btn-admin-nav');
-        const btnDash = document.getElementById('btn-dashboard-nav');
-        
-        if (user) {
-            nameSpan.textContent = user.name || user.email.split('@')[0];
-            greeting.classList.remove('hidden');
-            btnLogout.classList.remove('hidden');
-            btnDash.classList.remove('hidden');
-            googleBtnContainer.classList.add('hidden');
-            
-            const isAdmin = user.roles && user.roles.includes('admin');
-            btnAdmin.classList.toggle('hidden', !isAdmin);
-            
-            fetchDashboardData();
-        } else {
-            greeting.classList.add('hidden');
-            btnLogout.classList.add('hidden');
-            btnDash.classList.add('hidden');
-            btnAdmin.classList.add('hidden');
-            googleBtnContainer.classList.remove('hidden');
-            updatePointsDisplay(3);
-        }
-    }
-
-    // --- View switcher ---
-    const switchView = (targetView, scrollToCredits = false) => {
-        [viewReader, viewTranscriber, viewDashboard, viewAdmin].forEach(view => view.classList.add('hidden'));
-        targetView.classList.remove('hidden');
-
-        const isDashOrAdmin = targetView === viewDashboard || targetView === viewAdmin;
-        document.querySelector('.mode-toggle-container').classList.toggle('hidden', isDashOrAdmin);
-
-        btnDashboardNav.textContent = isDashOrAdmin ? '← Back' : 'Dashboard';
-        btnDashboardNav.classList.toggle('active-nav', targetView === viewDashboard);
-        btnAdminNav.classList.toggle('active-nav', targetView === viewAdmin);
-
-        if (scrollToCredits && targetView === viewDashboard) {
-            setTimeout(() => {
-                document.querySelector('.credits-card')?.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-        }
-    };
-
-    btnReader.addEventListener('click', () => {
+    // --- Event Listeners ---
+    if (btnReader) btnReader.addEventListener('click', () => {
         btnReader.classList.add('active');
-        btnTranscriber.classList.remove('active');
+        btnTranscriber?.classList.remove('active');
         switchView(viewReader);
-        toggleTrack.classList.remove('transcriber-active');
+        toggleTrack?.classList.remove('transcriber-active');
     });
 
-    btnTranscriber.addEventListener('click', () => {
+    if (btnTranscriber) btnTranscriber.addEventListener('click', () => {
         btnTranscriber.classList.add('active');
-        btnReader.classList.remove('active');
+        btnReader?.classList.remove('active');
         switchView(viewTranscriber);
-        toggleTrack.classList.add('transcriber-active');
+        toggleTrack?.classList.add('transcriber-active');
     });
 
-    btnDashboardNav.addEventListener('click', () => {
-        if (viewDashboard.classList.contains('hidden')) {
+    if (btnDashboardNav) btnDashboardNav.addEventListener('click', () => {
+        if (viewDashboard.classList.contains('hidden') && viewAdmin.classList.contains('hidden')) {
             switchView(viewDashboard);
         } else {
-            switchView(viewReader);
-            btnReader.classList.add('active');
-            btnTranscriber.classList.remove('active');
-            toggleTrack.classList.remove('transcriber-active');
+            btnReader.click();
         }
     });
 
-    btnAdminNav.addEventListener('click', () => {
+    if (btnAdminNav) btnAdminNav.addEventListener('click', () => {
         switchView(viewAdmin);
+        loadAdminUsers();
     });
 
-    // "Top Up" shortcut button in header — goes directly to credits section of Dashboard
-    btnTopupNav.addEventListener('click', () => {
-        switchView(viewDashboard, true);
+    if (btnTopupNav) btnTopupNav.addEventListener('click', () => switchView(viewDashboard, true));
+
+    if (btnLogout) btnLogout.addEventListener('click', () => {
+        localStorage.removeItem('aurelius_token');
+        localStorage.removeItem('aurelius_user');
+        updateUserUI(null);
+        switchView(viewReader);
     });
 
-    // --- Speed Slider ---
-    const speedSlider = document.getElementById('reader-speed');
-    const speedVal = document.getElementById('speed-val');
-    speedSlider.addEventListener('input', (e) => {
-        speedVal.textContent = parseFloat(e.target.value).toFixed(1) + 'x';
-    });
-
-    // --- File Upload Display ---
-    const fileInput = document.getElementById('stt-file');
-    const fileNameDisplay = document.getElementById('selected-file-name');
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            const file = e.target.files[0];
-            const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-            if (file.size > 10 * 1024 * 1024) {
-                fileNameDisplay.textContent = `⚠ File too large (${sizeMB}MB). Max is 10MB. Please split or compress.`;
-                fileNameDisplay.style.color = '#ff6b6b';
-                fileInput.value = '';
-            } else {
-                fileNameDisplay.textContent = `${file.name} (${sizeMB}MB)`;
-                fileNameDisplay.style.color = '';
-            }
-        } else {
-            fileNameDisplay.textContent = '';
-        }
-    });
-
-    // --- Modal Logic ---
-    const modal = document.getElementById('summary-modal');
-    const closeBtn = document.getElementById('close-modal');
-    closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
-
-    async function refreshPoints() {
-        try {
-            const res = await fetch('/api/points', { headers: authHeaders() });
-            if (!res.ok) return;
-            const data = await res.json();
-            updatePointsDisplay(data.points);
-        } catch (e) {
-            console.error('Points refresh error:', e);
-        }
-    }
+    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
 
     // --- Profile Update ---
-    document.getElementById('edit-profile-form').addEventListener('submit', (e) => {
+    const profileForm = document.getElementById('edit-profile-form');
+    if (profileForm) profileForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const newName = document.getElementById('input-name').value;
         const savedUserStr = localStorage.getItem('aurelius_user');
         if (!savedUserStr) return;
-        
         try {
             const user = JSON.parse(savedUserStr);
             user.name = newName;
             localStorage.setItem('aurelius_user', JSON.stringify(user));
-            document.getElementById('profile-name').textContent = newName;
-            document.getElementById('header-user-name').textContent = newName;
+            const pName = document.getElementById('profile-name');
+            const hName = document.getElementById('header-user-name');
+            if (pName) pName.textContent = newName;
+            if (hName) hName.textContent = newName;
             alert('Profile display name updated!');
         } catch (err) {
             alert('Update failed: ' + err.message);
         }
     });
 
-    // --- Real Exchange Rates ---
-    let currentRates = { IDR: 15500, MYR: 4.7, SAR: 3.75, USD: 1 }; // Fallbacks
-    const currencySelector = document.getElementById('currency-selector');
+    // --- STT Transcription ---
+    document.getElementById('btn-transcribe')?.addEventListener('click', async () => {
+        if (!fileInput.files.length) return alert('Please upload an audio file first.');
+        if (!getToken()) return alert('Please log in to use the Transcriber.');
 
-    async function fetchExchangeRates() {
-        try {
-            const res = await fetch('/api/pricing');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.rates) currentRates = data.rates;
-            }
-        } catch (e) {
-            console.error('Pricing error:', e);
-        } finally {
-            updatePrices();
-        }
-    }
+        const btn = document.getElementById('btn-transcribe');
+        const lang = document.getElementById('stt-lang').value;
+        const diarize = document.getElementById('speaker-diarization').checked;
+        const file = fileInput.files[0];
 
-    function updatePrices() {
-        if (!currencySelector) return;
-        const currency = currencySelector.value;
-        const rate = currentRates[currency] || 1;
-        
-        let prefix = currency === 'IDR' ? 'Rp ' : currency === 'MYR' ? 'RM ' : currency === 'SAR' ? '﷼ ' : '$';
-        
-        const formatPrice = (usd) => {
-            if (currency === 'USD') return ''; // Don't show local if USD is selected
-            const converted = usd * rate;
-            return `~ ${prefix}${converted.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-        };
+        btn.textContent = 'Analyzing...';
+        btn.disabled = true;
 
-        const basicEl = document.getElementById('price-basic-local');
-        const proEl = document.getElementById('price-pro-local');
-        
-        if (basicEl) basicEl.textContent = formatPrice(5);
-        if (proEl) proEl.textContent = formatPrice(20);
-    }
-
-    if (currencySelector) {
-        currencySelector.addEventListener('change', updatePrices);
-    }
-
-    // --- WhatsApp Top-up Buttons ---
-    document.querySelectorAll('.btn-buy-wa').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const user = window.netlifyIdentity.currentUser();
-            if (!user) return alert('Please log in first to top up.');
-            
-            const email = user.email;
-            // The predefined WhatsApp message
-            const msg = encodeURIComponent(`Saya mau top-up point untuk menggunakan Aurelius. Email akun saya: ${email}`);
-            window.open(`https://wa.me/6282168501686?text=${msg}`, '_blank');
+        const getDuration = () => new Promise(resolve => {
+            const audio = new Audio();
+            audio.src = URL.createObjectURL(file);
+            audio.onloadedmetadata = () => { URL.revokeObjectURL(audio.src); resolve(audio.duration); };
+            audio.onerror = () => resolve(0);
         });
+
+        const duration = await getDuration();
+        btn.textContent = 'Transcribing...';
+
+        const formData = new FormData();
+        formData.append('audio', file);
+        formData.append('lang', lang);
+        formData.append('diarize', diarize.toString());
+        formData.append('duration', duration.toString());
+
+        try {
+            const res = await fetch('/api/stt', { method: 'POST', headers: authHeaders(), body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
+
+            document.getElementById('stt-results').classList.remove('hidden');
+            document.getElementById('btn-summarize').classList.remove('hidden');
+            document.getElementById('transcript-text').innerHTML = data.transcript;
+
+            document.getElementById('btn-summarize').onclick = () => {
+                modal.classList.remove('hidden');
+                document.getElementById('summary-content').innerHTML = `<p>${data.summary}</p>`;
+            };
+            if (data.pointsRemaining !== undefined) updatePointsDisplay(data.pointsRemaining);
+        } catch (err) {
+            alert('STT Error: ' + err.message);
+        } finally {
+            btn.textContent = 'Process Transcription';
+            btn.disabled = false;
+        }
     });
 
     // --- TTS Generation ---
-    document.getElementById('btn-generate-tts').addEventListener('click', async () => {
+    document.getElementById('btn-generate-tts')?.addEventListener('click', async () => {
         const btn = document.getElementById('btn-generate-tts');
         const text = document.getElementById('reader-text').value;
         const voice = document.getElementById('reader-voice').value;
@@ -369,89 +325,52 @@ document.addEventListener('DOMContentLoaded', () => {
             const mime = data.mimeType || 'audio/wav';
             const audioUrl = data.audioUrl || (data.audioBase64 ? `data:${mime};base64,${data.audioBase64}` : null);
             if (audioUrl) {
-                const downloadBtn = document.getElementById('tts-download');
-                const ext = mime.split('/')[1] || 'wav';
-                downloadBtn.download = `aurelius_audio.${ext}`;
-                
                 document.getElementById('tts-audio').src = audioUrl;
-                downloadBtn.href = audioUrl;
+                document.getElementById('tts-download').href = audioUrl;
                 document.getElementById('tts-player-wrapper').classList.remove('hidden');
-            } else {
-                alert('Audio was generated but no playback URL was returned. The model may not support audio output yet.');
             }
             if (data.pointsRemaining !== undefined) updatePointsDisplay(data.pointsRemaining);
         } catch (err) {
-            alert('TTS Error: ' + (err.message || 'Unknown error. Check the browser console for details.'));
-            console.error('[TTS Error]', err);
+            alert('TTS Error: ' + err.message);
         } finally {
             btn.textContent = 'Generate Audio (1 Pt / 400 words)';
             btn.disabled = false;
         }
     });
 
-    // --- STT Transcription ---
-    document.getElementById('btn-transcribe').addEventListener('click', async () => {
-        if (!fileInput.files.length) return alert('Please upload an audio file first.');
-        if (!getToken()) return alert('Please log in to use the Transcriber.');
+    // --- Pricing & Exchange Rates ---
+    let currentRates = { IDR: 15500, MYR: 4.7, SAR: 3.75, USD: 1 };
+    const currencySelector = document.getElementById('currency-selector');
 
-        const btn = document.getElementById('btn-transcribe');
-        const lang = document.getElementById('stt-lang').value;
-        const file = fileInput.files[0];
-
-        btn.textContent = 'Analyzing...';
-        btn.disabled = true;
-
-        // Get duration
-        const getDuration = () => new Promise(resolve => {
-            const audio = new Audio();
-            audio.src = URL.createObjectURL(file);
-            audio.onloadedmetadata = () => {
-                URL.revokeObjectURL(audio.src);
-                resolve(audio.duration);
-            };
-            audio.onerror = () => resolve(0);
-        });
-
-        const duration = await getDuration();
-        const diarize = document.getElementById('speaker-diarization').checked;
-
-        btn.textContent = 'Transcribing...';
-        const formData = new FormData();
-        formData.append('audio', file);
-        formData.append('lang', lang);
-        formData.append('diarize', diarize.toString());
-        formData.append('duration', duration.toString());
-
+    async function fetchExchangeRates() {
         try {
-            const res = await fetch('/api/stt', {
-                method: 'POST',
-                headers: authHeaders(),
-                body: formData
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
-
-            document.getElementById('stt-results').classList.remove('hidden');
-            document.getElementById('btn-summarize').classList.remove('hidden');
-            document.getElementById('transcript-text').innerHTML = data.transcript;
-
-            document.getElementById('btn-summarize').onclick = () => {
-                modal.classList.remove('hidden');
-                document.getElementById('summary-content').innerHTML = `<p>${data.summary}</p>`;
-            };
-
-            if (data.pointsRemaining !== undefined) updatePointsDisplay(data.pointsRemaining);
-        } catch (err) {
-            alert('STT Error: ' + (err.message || 'Unknown error. Check the browser console for details.'));
-            console.error('[STT Error]', err);
-        } finally {
-            btn.textContent = 'Transcribe (1 Pt / 2 mins)';
-            btn.disabled = false;
-        }
-    });
-
-    // --- Netlify site URL fix using server-provided config ---
-    if (window.AURELIUS_CONFIG && window.AURELIUS_CONFIG.netlifyUrl && window.netlifyIdentity) {
-        window.netlifyIdentity.setAPIUrl(`${window.AURELIUS_CONFIG.netlifyUrl}/.netlify/identity`);
+            const res = await fetch('/api/pricing');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.rates) currentRates = data.rates;
+            }
+        } catch (e) { console.error('Pricing error:', e); }
+        updatePrices();
     }
+
+    function updatePrices() {
+        if (!currencySelector) return;
+        const currency = currencySelector.value;
+        const rate = currentRates[currency] || 1;
+        document.querySelectorAll('.price-val').forEach(el => {
+            const baseUsd = parseFloat(el.dataset.usd);
+            el.textContent = (baseUsd * rate).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        });
+        document.querySelectorAll('.currency-code').forEach(el => el.textContent = currency);
+    }
+    currencySelector?.addEventListener('change', updatePrices);
+
+    // --- Initialization ---
+    const savedUser = localStorage.getItem('aurelius_user');
+    if (savedUser) {
+        try { updateUserUI(JSON.parse(savedUser)); } 
+        catch (e) { localStorage.removeItem('aurelius_user'); }
+    }
+
+    window.onload = () => { initGoogleAuth(); };
 });

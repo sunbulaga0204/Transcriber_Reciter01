@@ -16,27 +16,13 @@ export function validateJWT(req: AuthRequest, res: Response, next: NextFunction)
     const token = authHeader.replace('Bearer ', '');
 
     try {
-        const secret = process.env.JWT_SECRET || process.env.NETLIFY_JWT_SECRET;
+        const secret = process.env.JWT_SECRET || 'fallback-secret';
+        const decoded = jwt.verify(token, secret) as any;
         
-        if (!secret) {
-            // Local fallback logic (WARNING: do not use unverified in prod)
-            const decoded = jwt.decode(token) as any;
-            if (!decoded || !decoded.sub) {
-                return res.status(401).json({ error: 'Invalid token structure' });
-            }
-            req.user = {
-                id: decoded.sub,
-                email: decoded.email,
-                roles: decoded.app_metadata?.roles || []
-            };
-            return next();
-        }
-
-        const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] }) as any;
         req.user = {
-            id: decoded.sub,
+            id: decoded.id || decoded.sub,
             email: decoded.email,
-            roles: decoded.app_metadata?.roles || []
+            roles: decoded.roles || decoded.app_metadata?.roles || []
         };
         next();
     } catch (err: any) {
