@@ -97,15 +97,22 @@ function wrapPcmInWav(pcmBuffer: Buffer, sampleRate: number): Buffer {
     return Buffer.concat([header, pcmBuffer]);
 }
 
-export async function transcribeAudio(fileBuffer: Buffer, mimeType: string, lang: string = 'en'): Promise<STTResponse> {
+export async function transcribeAudio(fileBuffer: Buffer, mimeType: string, lang: string = 'en', diarize: boolean = true): Promise<STTResponse> {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error('Missing GOOGLE_API_KEY');
 
     const base64Data = fileBuffer.toString('base64');
+    
+    let diarizationInstruction = '';
+    if (diarize) {
+        diarizationInstruction = '2. Use Speaker Diarization: Distinguish between different speakers and label them (e.g., Speaker A, Speaker B, or use names if identified).\n3. Format it with timestamps like [00:00] Speaker Name: [Text].';
+    } else {
+        diarizationInstruction = '2. Format the transcription with timestamps like [00:00] at the start of meaningful segments.';
+    }
+
     const prompt = `Please act as a professional transcriber. 
 1. Transcribe the provided audio file exactly as spoken. 
-2. Use Speaker Diarization: Distinguish between different speakers and label them (e.g., Speaker A, Speaker B, or use names if identified).
-3. Format it with timestamps like [00:00] Speaker Name: [Text].
+${diarizationInstruction}
 4. After the transcription, provide a line break with "---SUMMARY---" and then write a concise 1-paragraph summary of the audio.
 Ensure the transcription is highly accurate. Language: ${lang}`;
 

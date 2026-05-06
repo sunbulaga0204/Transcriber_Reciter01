@@ -83,7 +83,8 @@ router.post('/stt', validateJWT, upload.single('audio'), async (req: AuthRequest
 
     try {
         const lang = req.body.lang || 'en';
-        const result = await transcribeAudio(req.file.buffer, req.file.mimetype, lang);
+        const diarize = req.body.diarize === 'true';
+        const result = await transcribeAudio(req.file.buffer, req.file.mimetype, lang, diarize);
         result.pointsRemaining = deduction.remaining;
         res.json(result);
     } catch (e: any) {

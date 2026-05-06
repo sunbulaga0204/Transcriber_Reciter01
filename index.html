@@ -7,14 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <!-- Netlify Identity Widget -->
-    <script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="/config.js"></script>
-    <script>
-        // Set Identity API URL synchronously before app loads
-        if (window.AURELIUS_CONFIG && window.AURELIUS_CONFIG.netlifyUrl) {
-            window.netlifyIdentity.setAPIUrl(`${window.AURELIUS_CONFIG.netlifyUrl}/.netlify/identity`);
-        }
-    </script>
 </head>
 <body>
     <div class="app-container">
@@ -35,9 +29,8 @@
                 <button id="btn-dashboard-nav" class="nav-link hidden">Dashboard</button>
                 <button id="btn-topup-nav" class="cyber-button primary small hidden">⚡ Top Up</button>
                 <div id="auth-controls" class="auth-buttons">
-                    <button id="btn-login" class="cyber-button outline small">Log In</button>
-                    <button id="btn-signup" class="cyber-button primary small">Sign Up</button>
-                    <button id="btn-logout" class="nav-link hidden">Log Out</button>
+                    <div id="google-signin-btn"></div>
+                    <button id="btn-logout" class="cyber-button outline small hidden">Log Out</button>
                 </div>
             </div>
         </header>

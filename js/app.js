@@ -62,15 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = `<tr><td colspan="5" style="color:red">Error: ${err.message}</td></tr>`;
         }
     }
-    const btnLogin = document.getElementById('btn-login');
-    const btnSignup = document.getElementById('btn-signup');
     const btnLogout = document.getElementById('btn-logout');
     const btnTopupNav = document.getElementById('btn-topup-nav');
 
     // --- Auth helpers ---
     function getToken() {
-        const user = window.netlifyIdentity?.currentUser();
-        return user?.token?.access_token || null;
+        return localStorage.getItem('aurelius_token');
     }
 
     function authHeaders(extra = {}) {
@@ -81,9 +78,100 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Auth button listeners ---
-    btnLogin.addEventListener('click', () => window.netlifyIdentity.open('login'));
-    btnSignup.addEventListener('click', () => window.netlifyIdentity.open('signup'));
-    btnLogout.addEventListener('click', () => window.netlifyIdentity.logout());
+    btnLogout.addEventListener('click', () => {
+        localStorage.removeItem('aurelius_token');
+        localStorage.removeItem('aurelius_user');
+        updateUserUI(null);
+        switchView(viewReader);
+    });
+
+    // --- Google Identity Services Initialization ---
+    window.handleGoogleCredential = async (response) => {
+        try {
+            const res = await fetch('/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential: response.credential })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            localStorage.setItem('aurelius_token', data.token);
+            localStorage.setItem('aurelius_user', JSON.stringify(data.user));
+            updateUserUI(data.user);
+        } catch (error) {
+            console.error('[Google Auth Error]', error);
+            alert('Failed to log in: ' + error.message);
+        }
+    };
+
+    function initGoogleAuth() {
+        const clientId = window.AURELIUS_CONFIG?.googleClientId;
+        if (!clientId) {
+            console.warn('Google Client ID not configured.');
+            return;
+        }
+
+        google.accounts.id.initialize({
+            client_id: clientId,
+            callback: window.handleGoogleCredential,
+            theme: 'filled_black'
+        });
+
+        google.accounts.id.renderButton(
+            document.getElementById("google-signin-btn"),
+            { theme: "filled_black", size: "large", shape: "pill" }
+        );
+    }
+
+    // Restore session on load
+    const savedUser = localStorage.getItem('aurelius_user');
+    if (savedUser) {
+        try {
+            updateUserUI(JSON.parse(savedUser));
+        } catch (e) {
+            localStorage.removeItem('aurelius_user');
+        }
+    }
+
+    window.onload = () => {
+        initGoogleAuth();
+    };
+
+    function updatePointsDisplay(points) {
+        document.getElementById('point-count').textContent = points;
+        const el = document.getElementById('dashboard-point-count');
+        if (el) el.textContent = points;
+    }
+
+    function updateUserUI(user) {
+        const greeting = document.getElementById('user-greeting');
+        const nameSpan = document.getElementById('header-user-name');
+        const btnLogout = document.getElementById('btn-logout');
+        const googleBtnContainer = document.getElementById('google-signin-btn');
+        const btnAdmin = document.getElementById('btn-admin-nav');
+        const btnDash = document.getElementById('btn-dashboard-nav');
+        
+        if (user) {
+            nameSpan.textContent = user.name || user.email.split('@')[0];
+            greeting.classList.remove('hidden');
+            btnLogout.classList.remove('hidden');
+            btnDash.classList.remove('hidden');
+            googleBtnContainer.classList.add('hidden');
+            
+            const isAdmin = user.roles && user.roles.includes('admin');
+            btnAdmin.classList.toggle('hidden', !isAdmin);
+            
+            fetchDashboardData();
+        } else {
+            greeting.classList.add('hidden');
+            btnLogout.classList.add('hidden');
+            btnDash.classList.add('hidden');
+            btnAdmin.classList.add('hidden');
+            googleBtnContainer.classList.remove('hidden');
+            updatePointsDisplay(3);
+        }
+    }
 
     // --- View switcher ---
     const switchView = (targetView, scrollToCredits = false) => {
@@ -130,8 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     btnAdminNav.addEventListener('click', () => {
-        // Admin is now a separate page
-        window.location.href = '/admin';
+        switchView(viewAdmin);
     });
 
     // "Top Up" shortcut button in header — goes directly to credits section of Dashboard
@@ -171,33 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeBtn = document.getElementById('close-modal');
     closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
 
-    // --- Netlify Identity ---
-    if (window.netlifyIdentity) {
-        window.netlifyIdentity.on('init', user => updateUserUI(user));
-        window.netlifyIdentity.on('login', user => {
-            updateUserUI(user);
-            window.netlifyIdentity.close();
-        });
-        window.netlifyIdentity.on('logout', () => {
-            updateUserUI(null);
-            switchView(viewReader);
-        });
-
-        // Fix for browser back button (BFCache)
-        window.addEventListener('pageshow', () => {
-            if (window.netlifyIdentity.currentUser) {
-                const user = window.netlifyIdentity.currentUser();
-                updateUserUI(user);
-            }
-        });
-    }
-
-    function updatePointsDisplay(points) {
-        document.getElementById('point-count').textContent = points;
-        const el = document.getElementById('dashboard-point-count');
-        if (el) el.textContent = points;
-    }
-
     async function refreshPoints() {
         try {
             const res = await fetch('/api/points', { headers: authHeaders() });
@@ -209,50 +269,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateUserUI(user) {
-        if (user) {
-            document.getElementById('user-greeting').classList.remove('hidden');
-            const userName = user.user_metadata?.full_name || user.email.split('@')[0];
-            document.getElementById('header-user-name').textContent = userName;
-            
-            btnDashboardNav.classList.remove('hidden');
-            btnTopupNav.classList.remove('hidden');
-            btnLogin.classList.add('hidden');
-            btnSignup.classList.add('hidden');
-            btnLogout.classList.remove('hidden');
-
-            const roles = user.app_metadata?.roles || [];
-            btnAdminNav.classList.toggle('hidden', !roles.includes('admin'));
-
-            document.getElementById('profile-name').textContent = userName;
-            document.getElementById('profile-email').textContent = user.email;
-            document.getElementById('input-name').value = user.user_metadata?.full_name || '';
-
-            // Fetch real point balance from server
-            refreshPoints();
-            fetchExchangeRates();
-        } else {
-            document.getElementById('user-greeting').classList.add('hidden');
-            btnDashboardNav.classList.add('hidden');
-            btnTopupNav.classList.add('hidden');
-            btnAdminNav.classList.add('hidden');
-            btnLogin.classList.remove('hidden');
-            btnSignup.classList.remove('hidden');
-            btnLogout.classList.add('hidden');
-            updatePointsDisplay(3);
-        }
-    }
-
     // --- Profile Update ---
-    document.getElementById('edit-profile-form').addEventListener('submit', async (e) => {
+    document.getElementById('edit-profile-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const newName = document.getElementById('input-name').value;
-        const user = window.netlifyIdentity.currentUser();
-        if (!user) return;
+        const savedUserStr = localStorage.getItem('aurelius_user');
+        if (!savedUserStr) return;
+        
         try {
-            await window.netlifyIdentity.update({ data: { full_name: newName } });
+            const user = JSON.parse(savedUserStr);
+            user.name = newName;
+            localStorage.setItem('aurelius_user', JSON.stringify(user));
             document.getElementById('profile-name').textContent = newName;
-            alert('Profile updated!');
+            document.getElementById('header-user-name').textContent = newName;
+            alert('Profile display name updated!');
         } catch (err) {
             alert('Update failed: ' + err.message);
         }
@@ -383,11 +413,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const duration = await getDuration();
+        const diarize = document.getElementById('speaker-diarization').checked;
 
         btn.textContent = 'Transcribing...';
         const formData = new FormData();
         formData.append('audio', file);
         formData.append('lang', lang);
+        formData.append('diarize', diarize.toString());
         formData.append('duration', duration.toString());
 
         try {
