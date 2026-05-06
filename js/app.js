@@ -418,15 +418,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Netlify site URL fix for local dev ---
-    const netlifySiteURL = localStorage.getItem('netlifySiteURL');
-    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        if (!netlifySiteURL) {
-            const url = prompt('Enter your Netlify Site URL to enable local login (e.g., https://your-site.netlify.app):');
-            if (url) localStorage.setItem('netlifySiteURL', url);
-        }
-        if (netlifySiteURL && window.netlifyIdentity) {
-            window.netlifyIdentity.setAPIUrl(`${netlifySiteURL}/.netlify/identity`);
-        }
+    // --- Netlify site URL fix using server-provided config ---
+    if (window.AURELIUS_CONFIG && window.AURELIUS_CONFIG.netlifyUrl && window.netlifyIdentity) {
+        window.netlifyIdentity.setAPIUrl(`${window.AURELIUS_CONFIG.netlifyUrl}/.netlify/identity`);
     }
 });

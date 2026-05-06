@@ -19,6 +19,12 @@ app.use(express.json({ limit: '50mb' }));
 // API Routes
 app.use('/api', apiRoutes);
 
+// Dynamic Config for Frontend
+app.get('/config.js', (req, res) => {
+    res.type('application/javascript');
+    res.send(`window.AURELIUS_CONFIG = { netlifyUrl: "${process.env.NETLIFY_SITE_URL || ''}" };`);
+});
+
 // Static Files (Serve the frontend HTML/JS/CSS)
 app.use(express.static(process.cwd()));
 
