@@ -1,7 +1,7 @@
 import axios from 'axios';
-import type { STTResponse, TTSResponse, TTSRequest } from '../types/index.js';
+import type { STTResponse } from '../types/index.js';
 
-export async function generateTTS(text: string, voice?: string, speed?: string, prompt?: string): Promise<TTSResponse> {
+export async function generateTTS(text: string, voice?: string, speed?: string, prompt?: string): Promise<Buffer> {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error('Missing GOOGLE_API_KEY');
 
@@ -34,7 +34,7 @@ ${text}
         },
         {
             headers: { 'Content-Type': 'application/json' },
-            timeout: 120000 // 2 minutes
+            timeout: 180000 // 3 minutes
         }
     );
 
@@ -49,17 +49,12 @@ ${text}
     const base64Audio = audioPart.inlineData.data;
     const rawBuffer = Buffer.from(base64Audio, 'base64');
     
-    // Gemini returns raw 16-bit PCM (usually 24kHz). We need to add a WAV header.
-    const wavBuffer = wrapPcmInWav(rawBuffer, 24000);
-    const finalBase64 = wavBuffer.toString('base64');
+    // Gemini returns raw 16-bit PCM. High-quality models typically use 48kHz.
+    const wavBuffer = wrapPcmInWav(rawBuffer, 48000);
 
     console.log(`[Gemini TTS] Wrapped raw PCM in WAV header. Final Size: ${wavBuffer.length} bytes`);
 
-    return {
-        audioBase64: finalBase64,
-        mimeType: 'audio/wav',
-        pointsRemaining: 0 // To be filled by caller
-    };
+    return wavBuffer;
 }
 
 function wrapPcmInWav(pcmBuffer: Buffer, sampleRate: number): Buffer {
@@ -69,29 +64,21 @@ function wrapPcmInWav(pcmBuffer: Buffer, sampleRate: number): Buffer {
 
     // RIFF identifier
     header.write('RIFF', 0);
-    // File length minus 8 bytes
     header.writeUInt32LE(36 + pcmBuffer.length, 4);
-    // WAVE identifier
     header.write('WAVE', 8);
-    // fmt subchunk identifier
+
+    // Format chunk identifier
     header.write('fmt ', 12);
-    // format subchunk length
-    header.writeUInt32LE(16, 16);
-    // sample format (PCM = 1)
-    header.writeUInt16LE(1, 20);
-    // channel count
+    header.writeUInt32LE(16, 16); // Format chunk size
+    header.writeUInt16LE(1, 20); // Audio format (1 = PCM)
     header.writeUInt16LE(numChannels, 22);
-    // sample rate
     header.writeUInt32LE(sampleRate, 24);
-    // byte rate (SampleRate * NumChannels * BitsPerSample/8)
-    header.writeUInt32LE(sampleRate * numChannels * (bitsPerSample / 8), 28);
-    // block align (NumChannels * BitsPerSample/8)
-    header.writeUInt16LE(numChannels * (bitsPerSample / 8), 32);
-    // bits per sample
+    header.writeUInt32LE(sampleRate * numChannels * (bitsPerSample / 8), 28); // Byte rate
+    header.writeUInt16LE(numChannels * (bitsPerSample / 8), 32); // Block align
     header.writeUInt16LE(bitsPerSample, 34);
-    // data subchunk identifier
+
+    // Data chunk identifier
     header.write('data', 36);
-    // data length
     header.writeUInt32LE(pcmBuffer.length, 40);
 
     return Buffer.concat([header, pcmBuffer]);

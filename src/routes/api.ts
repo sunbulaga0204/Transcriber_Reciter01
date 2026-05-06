@@ -54,9 +54,13 @@ router.post('/tts', validateJWT, async (req: AuthRequest, res) => {
     }
 
     try {
-        const result = await generateTTS(text, voice, speed, prompt);
-        result.pointsRemaining = deduction.remaining;
-        res.json(result);
+        const audioBuffer = await generateTTS(text, voice, speed, prompt);
+        
+        // Send points in a header and audio in the body to save memory
+        res.set('Content-Type', 'audio/wav');
+        res.set('x-points-remaining', deduction.remaining.toString());
+        
+        res.send(audioBuffer);
     } catch (e: any) {
         await refundPoint(userId, requiredPoints);
         res.status(502).json({ error: `Speech synthesis failed: ${e.message}. Points refunded.` });

@@ -286,6 +286,19 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('btn-summarize').classList.remove('hidden');
             document.getElementById('transcript-text').innerHTML = data.transcript;
 
+            // Handle download
+            const downloadBtn = document.getElementById('btn-download-transcript');
+            downloadBtn.onclick = () => {
+                const text = document.getElementById('transcript-text').innerText;
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `aurelius_transcript_${new Date().getTime()}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
             document.getElementById('btn-summarize').onclick = () => {
                 modal.classList.remove('hidden');
                 document.getElementById('summary-content').innerHTML = `<p>${data.summary}</p>`;
@@ -319,17 +332,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: authHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ text, voice, speed, prompt })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
-
-            const mime = data.mimeType || 'audio/wav';
-            const audioUrl = data.audioUrl || (data.audioBase64 ? `data:${mime};base64,${data.audioBase64}` : null);
-            if (audioUrl) {
-                document.getElementById('tts-audio').src = audioUrl;
-                document.getElementById('tts-download').href = audioUrl;
-                document.getElementById('tts-player-wrapper').classList.remove('hidden');
+            
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || `Server error (${res.status})`);
             }
-            if (data.pointsRemaining !== undefined) updatePointsDisplay(data.pointsRemaining);
+
+            // Handle binary audio blob
+            const blob = await res.blob();
+            const audioUrl = URL.createObjectURL(blob);
+            
+            document.getElementById('tts-audio').src = audioUrl;
+            document.getElementById('tts-download').href = audioUrl;
+            document.getElementById('tts-player-wrapper').classList.remove('hidden');
+
+            const pointsRemaining = res.headers.get('x-points-remaining');
+            if (pointsRemaining !== null) updatePointsDisplay(parseInt(pointsRemaining));
         } catch (err) {
             alert('TTS Error: ' + err.message);
         } finally {

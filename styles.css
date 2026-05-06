@@ -744,7 +744,18 @@ input:checked + .slider {
 input:checked + .slider:before {
   transform: translateX(18px);
 }
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 0.5rem;
+}
 
+.results-header h3 {
+    margin: 0;
+}
 .slider.round {
   border-radius: 22px;
 }
