@@ -92,9 +92,9 @@ export async function transcribeAudio(fileBuffer: Buffer, mimeType: string, lang
     
     let diarizationInstruction = '';
     if (diarize) {
-        diarizationInstruction = '2. Use Speaker Diarization: Distinguish between different speakers and label them (e.g., Speaker A, Speaker B, or use names if identified).\n3. Format it with timestamps like [00:00] Speaker Name: [Text].';
+        diarizationInstruction = '2. Use Speaker Diarization: Distinguish speakers and label them.\n3. Format with precise time ranges like [00:00 - 00:05] Speaker Name: [Text].';
     } else {
-        diarizationInstruction = '2. Format the transcription with timestamps like [00:00] at the start of meaningful segments.';
+        diarizationInstruction = '2. Format with precise time ranges like [00:00 - 00:05] at the start of meaningful segments.';
     }
 
     const prompt = `Please act as a professional transcriber. 
@@ -144,7 +144,7 @@ Ensure the transcription is highly accurate. Language: ${lang}`;
         .map((line: string) => {
             // Bold Speaker labels and colorize timestamps
             let processed = line
-                .replace(/\[(\d{2}:\d{2})\]/g, '<span class="timestamp">[$1]</span>')
+                .replace(/\[(\d{2}:\d{2}\s*-\s*\d{2}:\d{2})\]/g, '<span class="timestamp">[$1]</span>')
                 .replace(/^(Speaker [A-Z]|[\w\s]+):/i, '<strong>$1:</strong>');
             return `<p>${processed}</p>`;
         })

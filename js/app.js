@@ -312,6 +312,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 a.click();
                 URL.revokeObjectURL(url);
             };
+            
+            // Handle SRT download
+            const srtBtn = document.getElementById('btn-download-srt');
+            srtBtn.onclick = () => {
+                const transcriptHtml = document.getElementById('transcript-text').innerHTML;
+                const temp = document.createElement('div');
+                temp.innerHTML = transcriptHtml;
+                const paragraphs = temp.querySelectorAll('p');
+                
+                let srtContent = '';
+                let index = 1;
+                
+                paragraphs.forEach(p => {
+                    const text = p.innerText;
+                    // Regex to find [MM:SS - MM:SS]
+                    const timeMatch = text.match(/\[(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})\]/);
+                    if (timeMatch) {
+                        const start = timeMatch[1];
+                        const end = timeMatch[2];
+                        const content = text.replace(/\[\d{2}:\d{2}\s*-\s*\d{2}:\d{2}\]/, '').trim();
+                        
+                        srtContent += `${index}\n`;
+                        srtContent += `00:${start},000 --> 00:${end},000\n`;
+                        srtContent += `${content}\n\n`;
+                        index++;
+                    }
+                });
+                
+                if (!srtContent) return alert('No valid timestamps found for SRT generation.');
+
+                const blob = new Blob([srtContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `aurelius_subtitles_${new Date().getTime()}.srt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
 
             document.getElementById('btn-summarize').onclick = () => {
                 modal.classList.remove('hidden');
