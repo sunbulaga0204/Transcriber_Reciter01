@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Netlify Identity Widget -->
     <script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+    <script src="/config.js"></script>
+    <script>
+        // Set Identity API URL synchronously before app loads
+        if (window.AURELIUS_CONFIG && window.AURELIUS_CONFIG.netlifyUrl) {
+            window.netlifyIdentity.setAPIUrl(`${window.AURELIUS_CONFIG.netlifyUrl}/.netlify/identity`);
+        }
+    </script>
 </head>
 <body>
     <div class="app-container">
@@ -27,8 +34,8 @@
                 <button id="btn-admin-nav" class="nav-link hidden admin-only">Admin Panel</button>
                 <button id="btn-dashboard-nav" class="nav-link hidden">Dashboard</button>
                 <button id="btn-topup-nav" class="cyber-button primary small hidden">⚡ Top Up</button>
-                <div id="auth-controls">
-                    <button id="btn-login" class="nav-link">Log In</button>
+                <div id="auth-controls" class="auth-buttons">
+                    <button id="btn-login" class="cyber-button outline small">Log In</button>
                     <button id="btn-signup" class="cyber-button primary small">Sign Up</button>
                     <button id="btn-logout" class="nav-link hidden">Log Out</button>
                 </div>
@@ -88,25 +95,37 @@
 
             <!-- TRANSCRIBER MODE (STT) -->
             <section id="view-transcriber" class="view-section hidden">
-                <div class="glass-panel">
-                    <h2>The "Intelligent Ear"</h2>
-                    <p class="subtitle">Multilingual audio transcription</p>
+                <div class="transcriber-container">
+                    <h2 class="view-title">Aurelius Audio Studio Transcriber</h2>
+                    <p class="view-subtitle">AI-powered transcription for researchers, filmmakers, and content creators.</p>
                     
                     <div class="upload-area" id="upload-zone">
                         <input type="file" id="stt-file" accept="audio/*" class="hidden-input">
                         <div class="upload-content">
-                            <span class="upload-icon">📁</span>
-                            <p>Drag & drop recorded audio file here</p>
-                            <span class="upload-btn">Browse Files</span>
+                            <div class="upload-icons">
+                                <span class="upload-icon">📄</span> <span class="or-text">or</span> <span class="upload-icon">🔗</span>
+                            </div>
+                            <p>Drag & Drop Audio File or <a href="#" class="paste-link">Paste Link</a></p>
                         </div>
                         <p class="file-name" id="selected-file-name"></p>
                     </div>
 
-                    <div class="controls-grid">
-                        <div class="control-group">
-                            <label>Language</label>
+                    <div class="options-grid">
+                        <div class="option-col">
+                            <label class="option-label">Speaker Identification</label>
+                            <div class="toggle-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="speaker-diarization" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                                <span class="toggle-desc">Identify distinct speakers (e.g., Speaker A, Speaker B)</span>
+                            </div>
+                        </div>
+                        <div class="option-col">
+                            <label class="option-label">Language Selection</label>
                             <select id="stt-lang" class="cyber-select">
-                                <option value="en">English</option>
+                                <option value="en-US">English (US)</option>
+                                <option value="en">English (UK)</option>
                                 <option value="ar">Arabic</option>
                                 <option value="ms">Malay</option>
                                 <option value="id">Indonesian</option>
@@ -114,9 +133,9 @@
                         </div>
                     </div>
 
-                    <div class="action-bar">
-                        <button id="btn-transcribe" class="cyber-button primary">Transcribe (1 Pt / 2 mins)</button>
-                        <button id="btn-summarize" class="cyber-button secondary hidden">One-Click Summary</button>
+                    <div class="action-bar-full">
+                        <button id="btn-transcribe" class="cyber-button primary full-width">Process Transcription</button>
+                        <button id="btn-summarize" class="cyber-button secondary hidden full-width mt-3">One-Click Summary</button>
                     </div>
 
                     <div class="results-area hidden" id="stt-results">
@@ -251,7 +270,6 @@
         </div>
     </div>
 
-    <script src="/config.js"></script>
     <script src="js/app.js" type="module"></script>
 </body>
 </html>

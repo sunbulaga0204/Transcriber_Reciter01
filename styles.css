@@ -135,45 +135,64 @@ h1 {
 
 .toggle-track {
     display: flex;
-    background: #121212;
-    border-radius: 8px;
-    position: relative;
-    padding: 4px;
-    width: 320px;
-    border: 1px solid #333;
+    justify-content: center;
+    gap: 2rem;
+    border-bottom: 1px solid #333;
+    padding-bottom: 0.5rem;
 }
 
 .toggle-indicator {
-    position: absolute;
-    top: 4px;
-    left: 4px;
-    width: calc(50% - 4px);
-    height: calc(100% - 8px);
-    background: #333;
-    border-radius: 4px;
-    transition: transform 0.2s ease-in-out;
-}
-
-.toggle-track.transcriber-active .toggle-indicator {
-    transform: translateX(100%);
+    display: none; /* Hide the box indicator */
 }
 
 .toggle-btn {
-    flex: 1;
     background: transparent;
     border: none;
     color: var(--text-muted);
     font-family: var(--font-ui);
-    font-weight: 700;
-    font-size: 0.9rem;
-    padding: 0.6rem 0;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
     cursor: pointer;
-    z-index: 1;
+    position: relative;
     transition: color 0.2s;
 }
 
 .toggle-btn.active {
     color: #fff;
+}
+
+.toggle-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -0.6rem;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--spotify-green);
+    border-radius: 3px;
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.cyber-button.outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+.cyber-button.outline:hover {
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.cyber-button.outline.small {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
 }
 
 /* Cards / Workspace */
@@ -592,4 +611,155 @@ h2 {
 #transcript-result strong {
     color: #fff;
     margin-right: 4px;
+}
+
+/* Transcriber Specific Layout */
+.transcriber-container {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.view-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.view-subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+}
+
+/* Upload Area Glow and Styling */
+.upload-area {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #181818;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(29, 185, 84, 0.1);
+    margin-bottom: 2rem;
+}
+
+.upload-area:hover {
+    border-color: var(--spotify-green);
+    box-shadow: 0 0 25px rgba(29, 185, 84, 0.3);
+}
+
+.upload-icons {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.upload-icons .upload-icon {
+    color: var(--spotify-green);
+    font-size: 2.5rem;
+}
+
+.upload-icons .or-text {
+    font-size: 1rem;
+    color: var(--text-muted);
+}
+
+.paste-link {
+    color: #fff;
+    text-decoration: underline;
+}
+
+/* Options Grid */
+.options-grid {
+    display: flex;
+    justify-content: space-between;
+    text-align: left;
+    margin-bottom: 2rem;
+    gap: 2rem;
+}
+
+.option-col {
+    flex: 1;
+}
+
+.option-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.toggle-desc {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* Toggle Switch CSS */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #333;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: var(--spotify-green);
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+.slider.round {
+  border-radius: 22px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.full-width {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1rem;
+    border-radius: 50px;
+}
+
+.mt-3 {
+    margin-top: 1rem;
 }
