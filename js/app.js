@@ -218,6 +218,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnTopupNav) btnTopupNav.addEventListener('click', () => switchView(viewDashboard, true));
 
+    // --- WhatsApp Purchase Logic ---
+    document.querySelectorAll('.btn-buy-wa').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tier = e.target.dataset.tier;
+            const points = e.target.dataset.points;
+            const currency = document.getElementById('currency-selector').value;
+            const price = document.querySelector(`.pricing-tier-card${tier === 'Pro' ? '.pro' : ''} .price-val`).textContent;
+            
+            const user = JSON.parse(localStorage.getItem('aurelius_user') || '{}');
+            const msg = encodeURIComponent(`Hi, I'd like to top up my Aurelius account.\n\nTier: ${tier}\nPoints: ${points}\nPrice: ${currency} ${price}\nUser: ${user.email || 'Not logged in'}`);
+            window.open(`https://wa.me/6282168501686?text=${msg}`, '_blank');
+        });
+    });
+
     if (btnLogout) btnLogout.addEventListener('click', () => {
         localStorage.removeItem('aurelius_token');
         localStorage.removeItem('aurelius_user');
