@@ -2,16 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import type { UserPoints, RateLimitRecord } from '../types/index.js';
 
-const DB_PATH = path.join(process.cwd(), 'database.json');
+const DB_PATH = process.env.DB_PATH || path.join(process.cwd(), 'database.json');
+
+// Ensure directory and DB exist
+const dir = path.dirname(DB_PATH);
+if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+}
+
+if (!fs.existsSync(DB_PATH)) {
+    fs.writeFileSync(DB_PATH, JSON.stringify({ points: {}, rateLimits: {} }));
+}
 
 interface Database {
     points: Record<string, UserPoints>;
     rateLimits: Record<string, RateLimitRecord>;
-}
-
-// Ensure DB exists
-if (!fs.existsSync(DB_PATH)) {
-    fs.writeFileSync(DB_PATH, JSON.stringify({ points: {}, rateLimits: {} }));
 }
 
 function getDb(): Database {
