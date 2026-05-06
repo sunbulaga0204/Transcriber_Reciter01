@@ -18,7 +18,7 @@
                 <div class="logo-text">
                     <h1>Aurelius</h1>
                     <p class="logo-subtitle">help your research and drafting</p>
-                    <p class="logo-powered">Powered by Gemini 3.1</p>
+                    <p class="logo-powered">Powered by Gemini Multimodal Model</p>
                 </div>
             </div>
             <div class="header-controls">
@@ -59,6 +59,7 @@
                             <select id="reader-voice" class="cyber-select">
                                 <option value="british-rp">British RP (Sophisticated/Formal)</option>
                                 <option value="australian">Australian (Friendly/Natural)</option>
+                                <option value="arabic">Arabic (Under Development)</option>
                             </select>
                         </div>
                         <div class="control-group">
@@ -76,10 +77,10 @@
                     </div>
                     
                     <div class="action-bar">
-                        <button id="btn-generate-tts" class="cyber-button primary">Generate Audio (1 Point)</button>
+                        <button id="btn-generate-tts" class="cyber-button primary">Generate Audio (1 Pt / 400 words)</button>
                         <div class="audio-player-container hidden" id="tts-player-wrapper">
                             <audio id="tts-audio" controls></audio>
-                            <a id="tts-download" class="cyber-button secondary" download="aurelius_output.mp3">Download</a>
+                            <a id="tts-download" class="cyber-button secondary" download="aurelius_output">Download</a>
                         </div>
                     </div>
                 </div>
@@ -114,7 +115,7 @@
                     </div>
 
                     <div class="action-bar">
-                        <button id="btn-transcribe" class="cyber-button primary">Transcribe (1 Point / min)</button>
+                        <button id="btn-transcribe" class="cyber-button primary">Transcribe (1 Pt / 2 mins)</button>
                         <button id="btn-summarize" class="cyber-button secondary hidden">One-Click Summary</button>
                     </div>
 

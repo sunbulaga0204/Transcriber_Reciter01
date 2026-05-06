@@ -572,3 +572,24 @@ h2 {
     text-decoration: underline !important;
     text-underline-offset: 8px;
 }
+
+/* Transcription Styles */
+.timestamp {
+    color: var(--spotify-green);
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    margin-right: 8px;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+#transcript-result p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    color: #e0e0e0;
+}
+
+#transcript-result strong {
+    color: #fff;
+    margin-right: 4px;
+}

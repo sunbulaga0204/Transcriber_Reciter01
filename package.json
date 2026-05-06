@@ -1,21 +1,33 @@
 {
   "name": "transcriber_reciter",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Aurelius Standalone Express Server",
+  "main": "src/server.ts",
+  "type": "module",
   "scripts": {
+    "start": "node --loader ts-node/esm src/server.ts",
+    "dev": "nodemon --exec node --loader ts-node/esm src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "@netlify/blobs": "^10.7.4",
     "axios": "^1.16.0",
-    "busboy": "^1.6.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "form-data": "^4.0.5",
-    "jsonwebtoken": "^9.0.3"
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^25.6.0",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
   }
 }

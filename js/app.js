@@ -9,6 +9,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleTrack = document.querySelector('.toggle-track');
     const btnDashboardNav = document.getElementById('btn-dashboard-nav');
     const btnAdminNav = document.getElementById('btn-admin-nav');
+
+    btnAdminNav.addEventListener('click', () => {
+        showView('view-admin');
+        loadAdminUsers();
+    });
+
+    async function loadAdminUsers() {
+        const tbody = document.querySelector('.admin-table tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="5">Loading users...</td></tr>';
+        
+        try {
+            const res = await fetch('/api/admin/users', { headers: authHeaders() });
+            if (!res.ok) throw new Error('Admin access denied');
+            const users = await res.json();
+            
+            tbody.innerHTML = '';
+            Object.entries(users).forEach(([id, data]) => {
+                const tr = document.createElement('tr');
+                const displayName = data.email || `${id.substring(0, 8)}...`;
+                tr.innerHTML = `
+                    <td>${displayName}</td>
+                    <td><span class="badge ${data.tier}">${data.tier}</span></td>
+                    <td>${data.points}</td>
+                    <td>Active</td>
+                    <td><button class="cyber-button secondary small btn-edit-points" data-id="${id}" data-points="${data.points}" data-tier="${data.tier}">Edit</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Handle edit buttons
+            document.querySelectorAll('.btn-edit-points').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const target = e.target;
+                    const id = target.dataset.id;
+                    const newPoints = prompt('Enter new points balance:', target.dataset.points);
+                    if (newPoints === null) return;
+                    
+                    const res = await fetch('/api/admin/update-points', {
+                        method: 'POST',
+                        headers: authHeaders({ 'Content-Type': 'application/json' }),
+                        body: JSON.stringify({ userId: id, points: parseInt(newPoints), tier: target.dataset.tier })
+                    });
+                    if (res.ok) {
+                        alert('Points updated!');
+                        loadAdminUsers();
+                    }
+                });
+            });
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="5" style="color:red">Error: ${err.message}</td></tr>`;
+        }
+    }
     const btnLogin = document.getElementById('btn-login');
     const btnSignup = document.getElementById('btn-signup');
     const btnLogout = document.getElementById('btn-logout');
@@ -283,10 +336,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || `Server error (${res.status})`);
 
-            const audioUrl = data.audioUrl || (data.audioBase64 ? `data:audio/mp3;base64,${data.audioBase64}` : null);
+            const mime = data.mimeType || 'audio/wav';
+            const audioUrl = data.audioUrl || (data.audioBase64 ? `data:${mime};base64,${data.audioBase64}` : null);
             if (audioUrl) {
+                const downloadBtn = document.getElementById('tts-download');
+                const ext = mime.split('/')[1] || 'wav';
+                downloadBtn.download = `aurelius_audio.${ext}`;
+                
                 document.getElementById('tts-audio').src = audioUrl;
-                document.getElementById('tts-download').href = audioUrl;
+                downloadBtn.href = audioUrl;
                 document.getElementById('tts-player-wrapper').classList.remove('hidden');
             } else {
                 alert('Audio was generated but no playback URL was returned. The model may not support audio output yet.');
@@ -296,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('TTS Error: ' + (err.message || 'Unknown error. Check the browser console for details.'));
             console.error('[TTS Error]', err);
         } finally {
-            btn.textContent = 'Generate Audio (1 Point)';
+            btn.textContent = 'Generate Audio (1 Pt / 400 words)';
             btn.disabled = false;
         }
     });
@@ -308,13 +366,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const btn = document.getElementById('btn-transcribe');
         const lang = document.getElementById('stt-lang').value;
+        const file = fileInput.files[0];
 
-        btn.textContent = 'Transcribing...';
+        btn.textContent = 'Analyzing...';
         btn.disabled = true;
 
+        // Get duration
+        const getDuration = () => new Promise(resolve => {
+            const audio = new Audio();
+            audio.src = URL.createObjectURL(file);
+            audio.onloadedmetadata = () => {
+                URL.revokeObjectURL(audio.src);
+                resolve(audio.duration);
+            };
+            audio.onerror = () => resolve(0);
+        });
+
+        const duration = await getDuration();
+
+        btn.textContent = 'Transcribing...';
         const formData = new FormData();
-        formData.append('audio', fileInput.files[0]);
+        formData.append('audio', file);
         formData.append('lang', lang);
+        formData.append('duration', duration.toString());
 
         try {
             const res = await fetch('/api/stt', {
@@ -339,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('STT Error: ' + (err.message || 'Unknown error. Check the browser console for details.'));
             console.error('[STT Error]', err);
         } finally {
-            btn.textContent = 'Transcribe (1 Point / min)';
+            btn.textContent = 'Transcribe (1 Pt / 2 mins)';
             btn.disabled = false;
         }
     });

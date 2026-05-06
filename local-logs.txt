@@ -1,0 +1,10 @@
+◇ injected env (3) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+
+🌟 Aurelius Local Studio running at http://localhost:8888
+
+[Environment Check]
+- Google API Key: ✅ Loaded
+- ExchangeRate API Key: ✅ Loaded
+
+Logs will appear below in real-time. Use Ctrl+C to stop.
+
