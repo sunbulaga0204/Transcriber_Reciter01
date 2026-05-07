@@ -17,8 +17,8 @@
             <div class="logo">
                 <span class="logo-icon">●</span>
                 <div class="logo-text">
-                    <h1>Aurelius</h1>
-                    <p class="logo-subtitle">help your research and drafting</p>
+                    <h1><a href="/" id="logo-link" style="text-decoration: none; color: inherit;">Aurelius</a></h1>
+                    <p class="logo-subtitle">your assistant in dealing with audio</p>
                     <p class="logo-powered">Powered by Gemini Multimodal Model</p>
                 </div>
             </div>
@@ -67,7 +67,7 @@
                             <input type="range" id="reader-speed" min="0.5" max="2.0" step="0.1" value="1.0" class="cyber-slider">
                         </div>
                         <div class="control-group">
-                            <label>Director Prompt</label>
+                            <label>Director Prompt <span class="label-note">(customize the voice here)</span></label>
                             <input type="text" id="reader-prompt" class="cyber-input" placeholder="e.g., Speak with an urgent tone...">
                         </div>
                     </div>
@@ -95,13 +95,23 @@
                     <div class="upload-area" id="upload-zone">
                         <input type="file" id="stt-file" accept="audio/*" class="hidden-input">
                         <div class="upload-content">
-                            <div class="upload-icons">
-                                <span class="upload-icon">📄</span> <span class="or-text">or</span> <span class="upload-icon">🔗</span>
+                            <div class="upload-visual">
+                                <div class="icon-circle">
+                                    <span class="upload-icon-main">📁</span>
+                                </div>
+                                <div class="icon-divider">or</div>
+                                <div class="icon-circle">
+                                    <span class="upload-icon-main">🔗</span>
+                                </div>
                             </div>
-                            <p>Drag & Drop Audio File or <a href="#" class="paste-link">Paste Link</a></p>
+                            <div class="upload-text">
+                                <p class="primary-text">Drag & Drop Audio File or <a href="#" class="paste-link" id="btn-paste-link">Paste Link</a></p>
+                                <p class="secondary-text">Supported formats: MP3, WAV, M4A (Max 50MB)</p>
+                            </div>
                         </div>
                         <p class="file-name" id="selected-file-name"></p>
                     </div>
+                    <p class="data-warning">⚠️ Note: Transcription and audio are not preserved. Please download your results before closing the tab.</p>
 
                     <div class="options-grid">
                         <div class="option-col">
@@ -219,15 +229,21 @@
                     <div class="admin-stats-grid">
                         <div class="stat-card">
                             <p class="stat-label">Total Users</p>
-                            <p class="stat-val">1</p>
+                            <p class="stat-val" id="admin-stat-users">0</p>
                         </div>
                         <div class="stat-card">
                             <p class="stat-label">Points Distributed</p>
-                            <p class="stat-val">3</p>
+                            <p class="stat-val" id="admin-stat-points">0</p>
                         </div>
                         <div class="stat-card">
                             <p class="stat-label">API Health</p>
                             <p class="stat-val status-ok">Stable</p>
+                        </div>
+                    </div>
+
+                    <div class="admin-tools">
+                        <div class="search-box">
+                            <input type="text" id="admin-user-search" class="cyber-input" placeholder="Search users by email or ID...">
                         </div>
                     </div>
 

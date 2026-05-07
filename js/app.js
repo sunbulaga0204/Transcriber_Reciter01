@@ -15,6 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileNameDisplay = document.getElementById('selected-file-name');
     const modal = document.getElementById('summary-modal');
     const closeBtn = document.getElementById('close-modal');
+    const logoLink = document.getElementById('logo-link');
+
+    let isProcessing = false;
+    let allUsersData = {}; // Cache for admin search
 
     // --- Auth Helpers ---
     function getToken() {
@@ -26,6 +30,38 @@ document.addEventListener('DOMContentLoaded', () => {
         return token
             ? { 'Authorization': `Bearer ${token}`, ...extra }
             : { ...extra };
+    }
+
+    // --- XSS Mitigation: Simple Sanitizer ---
+    function safeHTML(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const allowedTags = ['P', 'STRONG', 'SPAN', 'BR'];
+        const allowedClasses = ['timestamp'];
+
+        function sanitize(node) {
+            for (let i = node.childNodes.length - 1; i >= 0; i--) {
+                const child = node.childNodes[i];
+                if (child.nodeType === 1) { // Element
+                    if (!allowedTags.includes(child.tagName)) {
+                        node.removeChild(child);
+                    } else {
+                        // Strip all attributes except allowed classes
+                        const attrs = child.attributes;
+                        for (let j = attrs.length - 1; j >= 0; j--) {
+                            const attr = attrs[j];
+                            if (attr.name !== 'class' || !allowedClasses.includes(attr.value)) {
+                                child.removeAttribute(attr.name);
+                            }
+                        }
+                        sanitize(child);
+                    }
+                } else if (child.nodeType !== 3) { // Not text
+                    node.removeChild(child);
+                }
+            }
+        }
+        sanitize(doc.body);
+        return doc.body.innerHTML;
     }
 
     // --- Core Logic Functions ---
@@ -112,41 +148,70 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/admin/users', { headers: authHeaders() });
             if (!res.ok) throw new Error('Admin access denied');
             const users = await res.json();
+            allUsersData = users;
             
-            tbody.innerHTML = '';
-            Object.entries(users).forEach(([id, data]) => {
-                const tr = document.createElement('tr');
-                const displayName = data.email || `${id.substring(0, 8)}...`;
-                tr.innerHTML = `
-                    <td>${displayName}</td>
-                    <td><span class="badge ${data.tier}">${data.tier}</span></td>
-                    <td>${data.points}</td>
-                    <td>Active</td>
-                    <td><button class="cyber-button secondary small btn-edit-points" data-id="${id}" data-points="${data.points}" data-tier="${data.tier}">Edit</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
+            renderAdminTable(users);
+            updateAdminStats(users);
 
-            document.querySelectorAll('.btn-edit-points').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.target.dataset.id;
-                    const newPoints = prompt('Enter new points balance:', e.target.dataset.points);
-                    if (newPoints === null) return;
-                    
-                    const res = await fetch('/api/admin/update-points', {
-                        method: 'POST',
-                        headers: authHeaders({ 'Content-Type': 'application/json' }),
-                        body: JSON.stringify({ userId: id, points: parseInt(newPoints), tier: e.target.dataset.tier })
-                    });
-                    if (res.ok) {
-                        alert('Points updated!');
-                        loadAdminUsers();
-                    }
-                });
-            });
+            // Setup search listener once
+            const searchInput = document.getElementById('admin-user-search');
+            searchInput.oninput = (e) => {
+                const term = e.target.value.toLowerCase();
+                const filtered = Object.fromEntries(
+                    Object.entries(allUsersData).filter(([id, data]) => 
+                        id.toLowerCase().includes(term) || (data.email && data.email.toLowerCase().includes(term))
+                    )
+                );
+                renderAdminTable(filtered);
+            };
         } catch (err) {
             tbody.innerHTML = `<tr><td colspan="5" style="color:red">Error: ${err.message}</td></tr>`;
         }
+    }
+
+    function renderAdminTable(users) {
+        const tbody = document.querySelector('.admin-table tbody');
+        tbody.innerHTML = '';
+        Object.entries(users).forEach(([id, data]) => {
+            const tr = document.createElement('tr');
+            const displayName = data.email || `${id.substring(0, 8)}...`;
+            tr.innerHTML = `
+                <td>${displayName}</td>
+                <td><span class="badge ${data.tier}">${data.tier}</span></td>
+                <td>${data.points}</td>
+                <td>Active</td>
+                <td><button class="cyber-button secondary small btn-edit-points" data-id="${id}" data-points="${data.points}" data-tier="${data.tier}">Edit</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        document.querySelectorAll('.btn-edit-points').forEach(btn => {
+            btn.onclick = async (e) => {
+                const id = e.target.dataset.id;
+                const newPoints = prompt('Enter new points balance:', e.target.dataset.points);
+                if (newPoints === null) return;
+                
+                const res = await fetch('/api/admin/update-points', {
+                    method: 'POST',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ userId: id, points: parseInt(newPoints), tier: e.target.dataset.tier })
+                });
+                if (res.ok) {
+                    alert('Points updated!');
+                    loadAdminUsers();
+                }
+            };
+        });
+    }
+
+    function updateAdminStats(users) {
+        const totalUsers = Object.keys(users).length;
+        const totalPoints = Object.values(users).reduce((sum, u) => sum + (u.points || 0), 0);
+        
+        const elUsers = document.getElementById('admin-stat-users');
+        const elPoints = document.getElementById('admin-stat-points');
+        if (elUsers) elUsers.textContent = totalUsers;
+        if (elPoints) elPoints.textContent = totalPoints;
     }
 
     // --- Google Auth Integration ---
@@ -216,6 +281,11 @@ document.addEventListener('DOMContentLoaded', () => {
         loadAdminUsers();
     });
 
+    if (logoLink) logoLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        btnReader.click();
+    });
+
     if (btnTopupNav) btnTopupNav.addEventListener('click', () => switchView(viewDashboard, true));
 
     // --- WhatsApp Purchase Logic ---
@@ -272,6 +342,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const diarize = document.getElementById('speaker-diarization').checked;
         const file = fileInput.files[0];
 
+        const cost = Math.max(1, Math.ceil(duration / 300)); // Example: 1 pt per 5 mins
+        if (!confirm(`Transcription for this file will cost ${cost} points. Proceed?`)) return;
+
+        isProcessing = true;
         btn.textContent = 'Analyzing...';
         btn.disabled = true;
 
@@ -298,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('stt-results').classList.remove('hidden');
             document.getElementById('btn-summarize').classList.remove('hidden');
-            document.getElementById('transcript-text').innerHTML = data.transcript;
+            document.getElementById('transcript-text').innerHTML = safeHTML(data.transcript);
 
             // Handle download
             const downloadBtn = document.getElementById('btn-download-transcript');
@@ -318,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
             srtBtn.onclick = () => {
                 const transcriptHtml = document.getElementById('transcript-text').innerHTML;
                 const temp = document.createElement('div');
-                temp.innerHTML = transcriptHtml;
+                temp.innerHTML = transcriptHtml; // This is already sanitized from above
                 const paragraphs = temp.querySelectorAll('p');
                 
                 let srtContent = '';
@@ -353,12 +427,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('btn-summarize').onclick = () => {
                 modal.classList.remove('hidden');
-                document.getElementById('summary-content').innerHTML = `<p>${data.summary}</p>`;
+                document.getElementById('summary-content').innerHTML = safeHTML(`<p>${data.summary}</p>`);
             };
             if (data.pointsRemaining !== undefined) updatePointsDisplay(data.pointsRemaining);
         } catch (err) {
             alert('STT Error: ' + err.message);
         } finally {
+            isProcessing = false;
             btn.textContent = 'Process Transcription';
             btn.disabled = false;
         }
@@ -443,4 +518,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.onload = () => { initGoogleAuth(); };
+
+    // Speed slider display update
+    document.getElementById('reader-speed')?.addEventListener('input', (e) => {
+        document.getElementById('speed-val').textContent = e.target.value + 'x';
+    });
+
+    // Prevent accidental close during processing
+    window.addEventListener('beforeunload', (e) => {
+        if (isProcessing) {
+            e.preventDefault();
+            e.returnValue = 'A transcription is in progress. Closing the tab will lose your result. Are you sure?';
+        }
+    });
 });

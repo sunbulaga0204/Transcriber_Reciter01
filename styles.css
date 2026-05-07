@@ -71,8 +71,21 @@ h1 {
 .logo-subtitle {
     font-size: 0.8rem;
     color: var(--text-muted);
-    font-style: italic;
+    font-weight: 500;
     margin: 0;
+}
+
+.label-note {
+    font-size: 0.7rem;
+    text-transform: none;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 0.5rem;
+}
+
+#logo-link:hover {
+    color: var(--spotify-green) !important;
+    transition: color 0.3s;
 }
 
 .logo-powered {
@@ -324,22 +337,61 @@ h2 {
     border-color: var(--text-muted);
 }
 
-.upload-icon {
-    font-size: 3rem;
+.upload-visual {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
     margin-bottom: 1.5rem;
-    display: block;
+}
+
+.icon-circle {
+    width: 60px;
+    height: 60px;
+    background: #282828;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: transform 0.3s;
+}
+
+.upload-area:hover .icon-circle {
+    transform: translateY(-5px);
+    border-color: var(--spotify-green);
+}
+
+.upload-icon-main {
+    font-size: 1.8rem;
+}
+
+.icon-divider {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.upload-text .primary-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.upload-text .secondary-text {
+    font-size: 0.8rem;
     color: var(--text-muted);
 }
 
-.upload-btn {
-    display: inline-block;
+.data-warning {
+    font-size: 0.75rem;
+    color: #ffb700;
     margin-top: 1rem;
-    background: #fff;
-    color: #000;
-    padding: 0.75rem 2rem;
-    border-radius: 500px;
-    font-weight: 700;
-    font-size: 0.85rem;
+    background: rgba(255, 183, 0, 0.05);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    display: inline-block;
 }
 
 /* Audio Player */
@@ -514,6 +566,16 @@ h2 {
 .cyber-button.small {
     padding: 0.6rem 1.2rem;
     font-size: 0.8rem;
+}
+
+.admin-tools {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.admin-tools .search-box {
+    width: 300px;
 }
 
 /* Admin Panel Styles */

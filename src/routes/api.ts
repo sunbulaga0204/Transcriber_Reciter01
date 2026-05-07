@@ -9,7 +9,7 @@ import { generateTTS, transcribeAudio } from '../services/gemini.js';
 import type { TTSRequest } from '../types/index.js';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB limit
 
 router.get('/pricing', async (req, res) => {
     try {

@@ -41,9 +41,9 @@ export const dbStore = {
         const db = getDb();
         return db.points[userId] || null;
     },
-    setPoints(userId: string, data: UserPoints) {
+    setPoints(userId: string, data: Partial<UserPoints>) {
         const db = getDb();
-        db.points[userId] = data;
+        db.points[userId] = { ...db.points[userId], ...data } as UserPoints;
         saveDb(db);
     },
     getRateLimit(key: string): RateLimitRecord | null {
