@@ -5,7 +5,8 @@
   "main": "src/server.ts",
   "type": "module",
   "scripts": {
-    "start": "node --loader ts-node/esm src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc",
     "dev": "nodemon --exec node --loader ts-node/esm src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
