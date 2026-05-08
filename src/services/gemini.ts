@@ -8,26 +8,55 @@ export async function generateTTS(userId: string, text: string, voice?: string, 
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error('Missing GOOGLE_API_KEY');
 
-    // Improve speed instruction to be more natural, factoring in a slower baseline
-    const speedVal = parseFloat(speed || '1.0');
-    let speedInstruction = 'Read at a careful, measured academic pace. Throttled down slightly for clarity. Breathe naturally between sentences.';
-    if (speedVal > 1.2) {
-        speedInstruction = `Read at a brisk pace (around ${speedVal}x speed), but you MUST maintain clarity and professional articulation. Do not rush complex words.`;
-    } else if (speedVal < 0.8) {
-        speedInstruction = `Read at a very slow, deliberate pace (around ${speedVal}x speed). Ensure every single word is emphasized and distinct.`;
-    }
-
-    let personaInstructions = '';
+    // Build per-voice audio profile using the official structured prompt format
+    let voiceProfile = '';
     if (voice === 'british-rp') {
-        personaInstructions = 'Use a sophisticated British Received Pronunciation (RP) accent. You are narrating a complex academic lecture. You must speak at a very deliberate, slow, and measured pace. Insert thoughtful pauses after complex terms and at the end of every sentence. The tone should be formal, clear, and elegant.';
+        voiceProfile = `# AUDIO PROFILE: Professor Edmund
+## "The Academic Lecturer"
+
+## THE SCENE: University Lecture Hall
+A grand, wood-panelled lecture hall with excellent acoustics. The professor stands at a podium, delivering a formal academic lecture to attentive students. The atmosphere is scholarly, precise, and unhurried.
+
+### DIRECTOR'S NOTES
+Style: Sophisticated, authoritative, and intellectually commanding. Every word is chosen with care.
+Pacing: [very slow] Deliberate and measured. Insert a natural breath pause after every sentence. Pause longer on complex or foreign terms.
+Articulation: Crisp British RP consonants. When encountering foreign or transliterated terms (Arabic, Malay, Latin), slow down further and enunciate every syllable individually.
+Accent: Received Pronunciation (RP). Classic BBC English. Formal and elegant.
+Additional: Do NOT rush. Academic content requires cognitive processing time for the listener.`;
     } else if (voice === 'australian') {
-        personaInstructions = 'Use a natural Australian accent. The tone should be friendly, clear, and laid-back. Speak at a measured pace.';
+        voiceProfile = `# AUDIO PROFILE: Alex
+## "The Friendly Guide"
+
+## THE SCENE: Recording Studio
+A warm, well-treated recording studio. Alex is relaxed, seated at a microphone, speaking naturally to a friendly audience.
+
+### DIRECTOR'S NOTES
+Style: Warm, approachable, and clear. Natural and conversational.
+Pacing: Measured and comfortable. Not rushed.
+Accent: Natural Australian English. Friendly and laid-back.`;
     } else if (voice === 'arabic') {
-        personaInstructions = 'Use a clear and professional Arabic accent. The tone should be culturally authentic, authoritative, and smooth. Enunciate complex terminology clearly.';
+        voiceProfile = `# AUDIO PROFILE: Khalid
+## "The Professional Narrator"
+
+## THE SCENE: Professional Recording Studio
+A professional broadcast-quality studio. Khalid delivers content with cultural authority and smooth articulation.
+
+### DIRECTOR'S NOTES
+Style: Authoritative, culturally authentic, and smooth.
+Pacing: Measured. Slow down on complex terminology.
+Accent: Clear Modern Standard Arabic pronunciation.`;
     }
 
-    // Split text into chunks to maintain quality and avoid model degradation on long texts
-    const chunks = splitTextBySentence(text, 350); // Slightly larger chunks for efficiency
+    // Build speed tag based on slider value
+    const speedVal = parseFloat(speed || '1.0');
+    let speedTag = '';
+    if (speedVal > 1.5) speedTag = '[fast] ';
+    else if (speedVal > 1.2) speedTag = '[slightly fast] ';
+    else if (speedVal < 0.7) speedTag = '[very slow] ';
+    else if (speedVal < 0.9) speedTag = '[slow] ';
+
+    // Split text into chunks to maintain quality
+    const chunks = splitTextBySentence(text, 350);
     console.log(`[Gemini TTS] Splitting ${text.split(/\s+/).length} words into ${chunks.length} chunks. Processing in PARALLEL.`);
 
     // Process chunks in parallel to prevent timeouts
@@ -35,27 +64,28 @@ export async function generateTTS(userId: string, text: string, voice?: string, 
         // Pre-process chunk to force pacing in long run-on sentences
         const pacedChunk = forcePacing(chunk);
 
-        const finalPrompt = `
-Instruction: Please act as a professional voice actor.
-Persona: ${personaInstructions}
-Specific Director Instructions: ${prompt || 'None'}
-Reading Speed: ${speedInstruction}
+        const userDirectorNote = prompt ? `\n### USER DIRECTOR INSTRUCTIONS\n${prompt}` : '';
 
-IMPORTANT DIRECTIVES:
-1. Output ONLY the raw audio for the text provided below. Do not add any introductory or concluding remarks.
-2. Maintain a consistent voice and high audio quality.
-3. PACING & BREATHING: Do not rush. Take micro-pauses at commas and full pauses at periods. If a sentence is long, insert natural breathing pauses.
-4. OOV & FOREIGN TERMS: When encountering foreign, academic, or transliterated terms (e.g., Arabic/Malay terms like fiqh or muamalat), slow down and enunciate every syllable clearly. Do not compress or slur these words.
+        const finalPrompt = `${voiceProfile}${userDirectorNote}
 
-Text to read:
-${pacedChunk}
-`.trim();
+#### TRANSCRIPT
+${speedTag}${pacedChunk}`.trim();
 
         const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-tts-preview:generateContent?key=${apiKey}`,
             {
                 contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
-                generationConfig: { responseModalities: ["AUDIO"] }
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                // Resonant voices for formal/academic content
+                                voiceName: voice === 'british-rp' ? 'Charon' : (voice === 'arabic' ? 'Fenrir' : 'Aoede')
+                            }
+                        }
+                    }
+                }
             },
             {
                 headers: { 'Content-Type': 'application/json' },
@@ -74,7 +104,8 @@ ${pacedChunk}
 
     const pcmChunks = await Promise.all(chunkPromises);
     const fullPcm = Buffer.concat(pcmChunks);
-    const wavBuffer = wrapPcmInWav(fullPcm, 48000);
+    // Gemini TTS returns 24kHz PCM — correct sample rate is critical for proper playback speed
+    const wavBuffer = wrapPcmInWav(fullPcm, 24000);
 
     // Save to recovery cache
     recoveryCache.set(userId, { buffer: wavBuffer, timestamp: Date.now() });
