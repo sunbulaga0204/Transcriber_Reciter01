@@ -482,6 +482,41 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = false;
         }
     });
+    
+    // --- TTS Recovery ---
+    document.getElementById('btn-recover-tts')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btn-recover-tts');
+        if (!getToken()) return alert('Please log in first.');
+
+        btn.textContent = 'Recovering...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/tts/recover', {
+                method: 'GET',
+                headers: authHeaders()
+            });
+            
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || `No audio available for recovery.`);
+            }
+
+            const blob = await res.blob();
+            const audioUrl = URL.createObjectURL(blob);
+            
+            document.getElementById('tts-audio').src = audioUrl;
+            document.getElementById('tts-download').href = audioUrl;
+            document.getElementById('tts-player-wrapper').classList.remove('hidden');
+            
+            alert('Last generation successfully recovered!');
+        } catch (err) {
+            alert('Recovery failed: ' + err.message);
+        } finally {
+            btn.textContent = 'Recover Last Audio (Free)';
+            btn.disabled = false;
+        }
+    });
 
     // --- Pricing & Exchange Rates ---
     let currentRates = { IDR: 15500, MYR: 4.7, SAR: 3.75, USD: 1 };

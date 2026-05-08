@@ -77,7 +77,10 @@
                     </div>
                     
                     <div class="action-bar">
-                        <button id="btn-generate-tts" class="cyber-button primary">Generate Audio (1 Pt / 400 words)</button>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button id="btn-generate-tts" class="cyber-button primary">Generate Audio (1 Pt / 400 words)</button>
+                            <button id="btn-recover-tts" class="cyber-button secondary" title="Retrieve your last successful generation if download failed.">Recover Last Audio (Free)</button>
+                        </div>
                         <div class="audio-player-container hidden" id="tts-player-wrapper">
                             <audio id="tts-audio" controls></audio>
                             <a id="tts-download" class="cyber-button secondary" download="aurelius_output">Download</a>

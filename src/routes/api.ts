@@ -5,7 +5,7 @@ import type { AuthRequest } from '../middlewares/auth.js';
 import { getPoints, deductPoint, refundPoint } from '../services/points.js';
 import { checkRateLimit } from '../services/ratelimit.js';
 import { fetchExchangeRates } from '../services/pricing.js';
-import { generateTTS, transcribeAudio } from '../services/gemini.js';
+import { generateTTS, transcribeAudio, getRecoverableTTS } from '../services/gemini.js';
 import type { TTSRequest } from '../types/index.js';
 
 const router = express.Router();
@@ -54,7 +54,7 @@ router.post('/tts', validateJWT, async (req: AuthRequest, res) => {
     }
 
     try {
-        const audioBuffer = await generateTTS(text, voice, speed, prompt);
+        const audioBuffer = await generateTTS(userId, text, voice, speed, prompt);
         
         // Send points in a header and audio in the body to save memory
         res.set('Content-Type', 'audio/wav');
@@ -64,6 +64,22 @@ router.post('/tts', validateJWT, async (req: AuthRequest, res) => {
     } catch (e: any) {
         await refundPoint(userId, requiredPoints);
         res.status(502).json({ error: `Speech synthesis failed: ${e.message}. Points refunded.` });
+    }
+});
+
+router.get('/tts/recover', validateJWT, async (req: AuthRequest, res) => {
+    try {
+        const userId = req.user!.id;
+        const audioBuffer = getRecoverableTTS(userId);
+        
+        if (!audioBuffer) {
+            return res.status(404).json({ error: 'No recent audio found for recovery or cache expired (1hr limit).' });
+        }
+        
+        res.set('Content-Type', 'audio/wav');
+        res.send(audioBuffer);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
     }
 });
 

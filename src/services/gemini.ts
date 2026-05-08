@@ -1,7 +1,10 @@
 import axios from 'axios';
 import type { STTResponse } from '../types/index.js';
 
-export async function generateTTS(text: string, voice?: string, speed?: string, prompt?: string): Promise<Buffer> {
+// In-memory cache for recovering failed fetches (last result per user)
+const recoveryCache = new Map<string, { buffer: Buffer, timestamp: number }>();
+
+export async function generateTTS(userId: string, text: string, voice?: string, speed?: string, prompt?: string): Promise<Buffer> {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error('Missing GOOGLE_API_KEY');
 
@@ -24,15 +27,11 @@ export async function generateTTS(text: string, voice?: string, speed?: string, 
     }
 
     // Split text into chunks to maintain quality and avoid model degradation on long texts
-    const chunks = splitTextBySentence(text, 300); // 300 words per chunk for safety
-    console.log(`[Gemini TTS] Splitting ${text.split(/\s+/).length} words into ${chunks.length} chunks.`);
+    const chunks = splitTextBySentence(text, 350); // Slightly larger chunks for efficiency
+    console.log(`[Gemini TTS] Splitting ${text.split(/\s+/).length} words into ${chunks.length} chunks. Processing in PARALLEL.`);
 
-    const pcmChunks: Buffer[] = [];
-
-    for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        console.log(`[Gemini TTS] Processing chunk ${i + 1}/${chunks.length}...`);
-
+    // Process chunks in parallel to prevent timeouts
+    const chunkPromises = chunks.map(async (chunk, i) => {
         const finalPrompt = `
 Instruction: Please act as a professional voice actor.
 Persona: ${personaInstructions}
@@ -42,7 +41,6 @@ Reading Speed: ${speedInstruction}
 IMPORTANT: Output ONLY the raw audio for the text provided below. 
 Do not add any introductory or concluding remarks. 
 Maintain a consistent voice and high audio quality. 
-This is part ${i + 1} of ${chunks.length} of a larger text.
 
 Text to read:
 ${chunk}
@@ -52,39 +50,44 @@ ${chunk}
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
             {
                 contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
-                generationConfig: { 
-                    responseModalities: ["AUDIO"]
-                    // Voice/accent is controlled entirely via the prompt persona instructions.
-                    // speechConfig voiceNames here are Google Cloud TTS identifiers and are NOT
-                    // valid for gemini-2.5-flash-preview-tts — they cause 400 Bad Request errors.
-                }
+                generationConfig: { responseModalities: ["AUDIO"] }
             },
             {
                 headers: { 'Content-Type': 'application/json' },
-                timeout: 180000 // 3 minutes per chunk
+                timeout: 180000 
             }
         );
 
         const candidates = response.data.candidates;
-        if (!candidates || candidates.length === 0) throw new Error(`No candidates returned from Gemini for chunk ${i+1}`);
+        if (!candidates || candidates.length === 0) throw new Error(`No candidates returned for chunk ${i+1}`);
         
-        const parts = candidates[0].content.parts;
-        const audioPart = parts.find((p: any) => p.inlineData && p.inlineData.mimeType.startsWith('audio/'));
-        
-        if (!audioPart) throw new Error(`Gemini did not return audio for chunk ${i+1}.`);
+        const audioPart = candidates[0].content.parts.find((p: any) => p.inlineData && p.inlineData.mimeType.startsWith('audio/'));
+        if (!audioPart) throw new Error(`No audio data for chunk ${i+1}`);
 
-        const base64Audio = audioPart.inlineData.data;
-        pcmChunks.push(Buffer.from(base64Audio, 'base64'));
-    }
+        return Buffer.from(audioPart.inlineData.data, 'base64');
+    });
 
+    const pcmChunks = await Promise.all(chunkPromises);
     const fullPcm = Buffer.concat(pcmChunks);
-    
-    // Gemini returns raw 16-bit PCM. High-quality models typically use 48kHz.
     const wavBuffer = wrapPcmInWav(fullPcm, 48000);
 
-    console.log(`[Gemini TTS] Combined ${pcmChunks.length} chunks. Final Size: ${wavBuffer.length} bytes`);
+    // Save to recovery cache
+    recoveryCache.set(userId, { buffer: wavBuffer, timestamp: Date.now() });
 
     return wavBuffer;
+}
+
+export function getRecoverableTTS(userId: string): Buffer | null {
+    const entry = recoveryCache.get(userId);
+    if (!entry) return null;
+    
+    // Cache for 1 hour
+    if (Date.now() - entry.timestamp > 3600000) {
+        recoveryCache.delete(userId);
+        return null;
+    }
+    
+    return entry.buffer;
 }
 
 function splitTextBySentence(text: string, maxWords: number): string[] {
