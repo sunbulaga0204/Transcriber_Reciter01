@@ -5,6 +5,15 @@ export async function generateTTS(text: string, voice?: string, speed?: string, 
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error('Missing GOOGLE_API_KEY');
 
+    // Improve speed instruction to be more natural
+    const speedVal = parseFloat(speed || '1.0');
+    let speedInstruction = 'Read at a natural, standard pace.';
+    if (speedVal > 1.2) {
+        speedInstruction = `Read at a brisk, energetic pace (around ${speedVal}x speed). Maintain clarity and professional articulation.`;
+    } else if (speedVal < 0.8) {
+        speedInstruction = `Read at a slow, deliberate pace (around ${speedVal}x speed). Ensure every word is emphasized.`;
+    }
+
     let personaInstructions = '';
     if (voice === 'british-rp') {
         personaInstructions = 'Use a sophisticated British Received Pronunciation (RP) accent. The tone should be formal, clear, and elegant.';
@@ -14,47 +23,107 @@ export async function generateTTS(text: string, voice?: string, speed?: string, 
         personaInstructions = 'Use a clear and professional Arabic accent. The tone should be culturally authentic, authoritative, and smooth.';
     }
 
-    const speedInstruction = speed ? `Please read at ${speed}x speed.` : '';
+    // Split text into chunks to maintain quality and avoid model degradation on long texts
+    const chunks = splitTextBySentence(text, 300); // 300 words per chunk for safety
+    console.log(`[Gemini TTS] Splitting ${text.split(/\s+/).length} words into ${chunks.length} chunks.`);
 
-    const finalPrompt = `
+    const pcmChunks: Buffer[] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        console.log(`[Gemini TTS] Processing chunk ${i + 1}/${chunks.length}...`);
+
+        const finalPrompt = `
 Instruction: Please act as a professional voice actor.
 Persona: ${personaInstructions}
 Specific Director Instructions: ${prompt || 'None'}
-Reading Speed: ${speedInstruction || 'Normal'}
+Reading Speed: ${speedInstruction}
+
+IMPORTANT: Output ONLY the raw audio for the text provided below. 
+Do not add any introductory or concluding remarks. 
+Maintain a consistent voice and high audio quality. 
+This is part ${i + 1} of ${chunks.length} of a larger text.
 
 Text to read:
-${text}
+${chunk}
 `.trim();
 
-    const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
-        {
-            contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
-            generationConfig: { responseModalities: ["AUDIO"] }
-        },
-        {
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 180000 // 3 minutes
-        }
-    );
+        const response = await axios.post(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`,
+            {
+                contents: [{ role: 'user', parts: [{ text: finalPrompt }] }],
+                generationConfig: { 
+                    responseModalities: ["AUDIO"]
+                    // Voice/accent is controlled entirely via the prompt persona instructions.
+                    // speechConfig voiceNames here are Google Cloud TTS identifiers and are NOT
+                    // valid for gemini-2.5-flash-preview-tts — they cause 400 Bad Request errors.
+                }
+            },
+            {
+                headers: { 'Content-Type': 'application/json' },
+                timeout: 180000 // 3 minutes per chunk
+            }
+        );
 
-    const candidates = response.data.candidates;
-    if (!candidates || candidates.length === 0) throw new Error("No candidates returned from Gemini");
-    
-    const parts = candidates[0].content.parts;
-    const audioPart = parts.find((p: any) => p.inlineData && p.inlineData.mimeType.startsWith('audio/'));
-    
-    if (!audioPart) throw new Error("Gemini did not return audio inlineData.");
+        const candidates = response.data.candidates;
+        if (!candidates || candidates.length === 0) throw new Error(`No candidates returned from Gemini for chunk ${i+1}`);
+        
+        const parts = candidates[0].content.parts;
+        const audioPart = parts.find((p: any) => p.inlineData && p.inlineData.mimeType.startsWith('audio/'));
+        
+        if (!audioPart) throw new Error(`Gemini did not return audio for chunk ${i+1}.`);
 
-    const base64Audio = audioPart.inlineData.data;
-    const rawBuffer = Buffer.from(base64Audio, 'base64');
+        const base64Audio = audioPart.inlineData.data;
+        pcmChunks.push(Buffer.from(base64Audio, 'base64'));
+    }
+
+    const fullPcm = Buffer.concat(pcmChunks);
     
     // Gemini returns raw 16-bit PCM. High-quality models typically use 48kHz.
-    const wavBuffer = wrapPcmInWav(rawBuffer, 48000);
+    const wavBuffer = wrapPcmInWav(fullPcm, 48000);
 
-    console.log(`[Gemini TTS] Wrapped raw PCM in WAV header. Final Size: ${wavBuffer.length} bytes`);
+    console.log(`[Gemini TTS] Combined ${pcmChunks.length} chunks. Final Size: ${wavBuffer.length} bytes`);
 
     return wavBuffer;
+}
+
+function splitTextBySentence(text: string, maxWords: number): string[] {
+    // Basic sentence splitting: look for punctuation followed by space
+    const sentences = text.match(/[^.!?]+[.!?]+(?:\s+|$)|.+/g) || [text];
+    const chunks: string[] = [];
+    let currentChunk = "";
+    let currentCount = 0;
+
+    for (const sentence of sentences) {
+        const words = sentence.trim().split(/\s+/);
+        const wordCount = words.length;
+
+        // If a single sentence is longer than maxWords, split it by words instead
+        if (wordCount > maxWords) {
+            if (currentChunk !== "") {
+                chunks.push(currentChunk.trim());
+                currentChunk = "";
+                currentCount = 0;
+            }
+            for (let i = 0; i < words.length; i += maxWords) {
+                chunks.push(words.slice(i, i + maxWords).join(' '));
+            }
+            continue;
+        }
+
+        if (currentCount + wordCount > maxWords && currentChunk !== "") {
+            chunks.push(currentChunk.trim());
+            currentChunk = sentence;
+            currentCount = wordCount;
+        } else {
+            currentChunk += (currentChunk === "" ? "" : " ") + sentence;
+            currentCount += wordCount;
+        }
+    }
+    if (currentChunk !== "") {
+        chunks.push(currentChunk.trim());
+    }
+    return chunks;
 }
 
 function wrapPcmInWav(pcmBuffer: Buffer, sampleRate: number): Buffer {
