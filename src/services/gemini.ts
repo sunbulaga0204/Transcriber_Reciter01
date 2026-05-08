@@ -8,22 +8,22 @@ export async function generateTTS(userId: string, text: string, voice?: string, 
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error('Missing GOOGLE_API_KEY');
 
-    // Improve speed instruction to be more natural
+    // Improve speed instruction to be more natural, factoring in a slower baseline
     const speedVal = parseFloat(speed || '1.0');
-    let speedInstruction = 'Read at a natural, standard pace.';
+    let speedInstruction = 'Read at a careful, measured academic pace. Throttled down slightly for clarity. Breathe naturally between sentences.';
     if (speedVal > 1.2) {
-        speedInstruction = `Read at a brisk, energetic pace (around ${speedVal}x speed). Maintain clarity and professional articulation.`;
+        speedInstruction = `Read at a brisk pace (around ${speedVal}x speed), but you MUST maintain clarity and professional articulation. Do not rush complex words.`;
     } else if (speedVal < 0.8) {
-        speedInstruction = `Read at a slow, deliberate pace (around ${speedVal}x speed). Ensure every word is emphasized.`;
+        speedInstruction = `Read at a very slow, deliberate pace (around ${speedVal}x speed). Ensure every single word is emphasized and distinct.`;
     }
 
     let personaInstructions = '';
     if (voice === 'british-rp') {
-        personaInstructions = 'Use a sophisticated British Received Pronunciation (RP) accent. The tone should be formal, clear, and elegant.';
+        personaInstructions = 'Use a sophisticated British Received Pronunciation (RP) accent. You are narrating a complex academic lecture. You must speak at a very deliberate, slow, and measured pace. Insert thoughtful pauses after complex terms and at the end of every sentence. The tone should be formal, clear, and elegant.';
     } else if (voice === 'australian') {
-        personaInstructions = 'Use a natural Australian accent. The tone should be friendly, clear, and laid-back.';
+        personaInstructions = 'Use a natural Australian accent. The tone should be friendly, clear, and laid-back. Speak at a measured pace.';
     } else if (voice === 'arabic') {
-        personaInstructions = 'Use a clear and professional Arabic accent. The tone should be culturally authentic, authoritative, and smooth.';
+        personaInstructions = 'Use a clear and professional Arabic accent. The tone should be culturally authentic, authoritative, and smooth. Enunciate complex terminology clearly.';
     }
 
     // Split text into chunks to maintain quality and avoid model degradation on long texts
@@ -32,18 +32,23 @@ export async function generateTTS(userId: string, text: string, voice?: string, 
 
     // Process chunks in parallel to prevent timeouts
     const chunkPromises = chunks.map(async (chunk, i) => {
+        // Pre-process chunk to force pacing in long run-on sentences
+        const pacedChunk = forcePacing(chunk);
+
         const finalPrompt = `
 Instruction: Please act as a professional voice actor.
 Persona: ${personaInstructions}
 Specific Director Instructions: ${prompt || 'None'}
 Reading Speed: ${speedInstruction}
 
-IMPORTANT: Output ONLY the raw audio for the text provided below. 
-Do not add any introductory or concluding remarks. 
-Maintain a consistent voice and high audio quality. 
+IMPORTANT DIRECTIVES:
+1. Output ONLY the raw audio for the text provided below. Do not add any introductory or concluding remarks.
+2. Maintain a consistent voice and high audio quality.
+3. PACING & BREATHING: Do not rush. Take micro-pauses at commas and full pauses at periods. If a sentence is long, insert natural breathing pauses.
+4. OOV & FOREIGN TERMS: When encountering foreign, academic, or transliterated terms (e.g., Arabic/Malay terms like fiqh or muamalat), slow down and enunciate every syllable clearly. Do not compress or slur these words.
 
 Text to read:
-${chunk}
+${pacedChunk}
 `.trim();
 
         const response = await axios.post(
@@ -127,6 +132,40 @@ function splitTextBySentence(text: string, maxWords: number): string[] {
         chunks.push(currentChunk.trim());
     }
     return chunks;
+}
+
+/**
+ * Injects synthetic pauses (ellipses) into long run-on sentences 
+ * to force the TTS engine to take micro-pauses and prevent tempo runaway.
+ */
+function forcePacing(text: string): string {
+    const sentences = text.match(/[^.!?]+[.!?]+(?:\s+|$)|.+/g) || [text];
+    
+    return sentences.map(sentence => {
+        const words = sentence.trim().split(/\s+/);
+        // If sentence is longer than 15 words and lacks internal pausing commas
+        if (words.length > 15 && !sentence.includes(',')) {
+            const conjunctions = ['and', 'but', 'or', 'because', 'which', 'that', 'where', 'while', 'furthermore'];
+            let modified = false;
+            
+            // Try to find a logical break point (conjunction) near the middle
+            for (let i = 7; i < words.length - 5; i++) {
+                if (conjunctions.includes(words[i].toLowerCase())) {
+                    words[i] = '... ' + words[i];
+                    modified = true;
+                    break;
+                }
+            }
+            
+            // Fallback: just split it in the middle to force a breath
+            if (!modified) {
+                const mid = Math.floor(words.length / 2);
+                words[mid] = words[mid] + ' ...';
+            }
+            return words.join(' ');
+        }
+        return sentence;
+    }).join(' ');
 }
 
 function wrapPcmInWav(pcmBuffer: Buffer, sampleRate: number): Buffer {
