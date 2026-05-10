@@ -6,12 +6,27 @@ import crypto from 'crypto';
 
 export async function getYoutubeInfo(url: string): Promise<{ duration: number, title: string }> {
     try {
-        const info: any = await youtubedl(url, { 
+        const cookiesPath = path.join('/tmp', 'cookies.txt');
+        
+        // If cookies are provided via environment variable (Railway style), write them to /tmp
+        if (process.env.YT_COOKIES) {
+            fs.writeFileSync(cookiesPath, process.env.YT_COOKIES);
+        }
+
+        const options: any = { 
             dumpJson: true, 
             noCheckCertificates: true, 
-            noWarnings: true,
-            extractorArgs: 'youtube:player_client=android,web'
-        });
+            noWarnings: true
+        };
+
+        // Check for /tmp/cookies.txt (env var source) or local cookies.txt
+        if (fs.existsSync(cookiesPath)) {
+            options.cookies = cookiesPath;
+        } else if (fs.existsSync(path.join(process.cwd(), 'cookies.txt'))) {
+            options.cookies = path.join(process.cwd(), 'cookies.txt');
+        }
+
+        const info: any = await youtubedl(url, options);
         return { duration: info.duration, title: info.title };
     } catch (error: any) {
         throw new Error(`YouTube info fetch failed: ${error.message}`);
@@ -30,17 +45,24 @@ export async function processYoutubeLink(url: string): Promise<{ buffer: Buffer,
 
         const tmpFileId = crypto.randomBytes(8).toString('hex');
         const tmpFilePath = path.join('/tmp', `aurelius_audio_${tmpFileId}.m4a`);
+        const cookiesPath = path.join('/tmp', 'cookies.txt');
 
-        // Download directly to m4a format (bypasses ffmpeg dependency)
-        // Using player_client=android to bypass bot wall
-        await youtubedl(url, {
+        const options: any = {
             extractAudio: true,
             format: 'bestaudio[ext=m4a]/bestaudio',
             output: tmpFilePath,
             noCheckCertificates: true,
-            noWarnings: true,
-            extractorArgs: 'youtube:player_client=android,web'
-        });
+            noWarnings: true
+        };
+
+        // Reuse /tmp cookies or local cookies
+        if (fs.existsSync(cookiesPath)) {
+            options.cookies = cookiesPath;
+        } else if (fs.existsSync(path.join(process.cwd(), 'cookies.txt'))) {
+            options.cookies = path.join(process.cwd(), 'cookies.txt');
+        }
+
+        await youtubedl(url, options);
 
         if (!fs.existsSync(tmpFilePath)) {
             throw new Error('Failed to download audio file.');
