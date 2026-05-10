@@ -5,13 +5,11 @@ RUN apt-get update && apt-get install -y python3 --no-install-recommends && rm -
 
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY package*.json ./
-RUN npm ci --omit=dev || npm ci
-
-# Copy source and build TypeScript
+# Copy all files first so that postinstall (tsc) has access to tsconfig.json and src/
 COPY . .
-RUN npm run build
+
+# Install dependencies (this will automatically run postinstall -> npm run build)
+RUN npm ci --omit=dev || npm ci
 
 EXPOSE 3000
 
