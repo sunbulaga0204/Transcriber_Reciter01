@@ -6,6 +6,7 @@ import { getPoints, deductPoint, refundPoint } from '../services/points.js';
 import { checkRateLimit } from '../services/ratelimit.js';
 import { fetchExchangeRates } from '../services/pricing.js';
 import { generateTTS, transcribeAudio, getRecoverableTTS } from '../services/gemini.js';
+import { processYoutubeLink } from '../services/youtube.js';
 import type { TTSRequest } from '../types/index.js';
 
 const router = express.Router();
@@ -85,9 +86,33 @@ router.get('/tts/recover', validateJWT, async (req: AuthRequest, res) => {
 
 router.post('/stt', validateJWT, upload.single('audio'), async (req: AuthRequest, res) => {
     const userId = req.user!.id;
-    if (!req.file) return res.status(400).json({ error: 'No audio file uploaded.' });
+    const { linkUrl, lang, diarize: diarizeStr } = req.body;
+    
+    if (!req.file && !linkUrl) {
+        return res.status(400).json({ error: 'No audio file or link provided.' });
+    }
 
-    const duration = parseFloat(req.body.duration || '0');
+    let fileBuffer: Buffer;
+    let mimeType: string;
+    let duration: number;
+
+    try {
+        if (linkUrl) {
+            // Process YouTube or external link
+            const result = await processYoutubeLink(linkUrl);
+            fileBuffer = result.buffer;
+            mimeType = result.mimeType;
+            duration = result.duration;
+        } else {
+            // Process uploaded file
+            fileBuffer = req.file!.buffer;
+            mimeType = req.file!.mimetype;
+            duration = parseFloat(req.body.duration || '0');
+        }
+    } catch (e: any) {
+        return res.status(400).json({ error: `Audio processing failed: ${e.message}` });
+    }
+
     // Pricing: 1 point per 2 minutes (120 seconds). Minimum 1 point.
     const requiredPoints = Math.max(1, Math.ceil(duration / 120));
 
@@ -102,9 +127,9 @@ router.post('/stt', validateJWT, upload.single('audio'), async (req: AuthRequest
     }
 
     try {
-        const lang = req.body.lang || 'en';
-        const diarize = req.body.diarize === 'true';
-        const result = await transcribeAudio(req.file.buffer, req.file.mimetype, lang, diarize);
+        const transcribeLang = lang || 'en';
+        const diarize = diarizeStr === 'true';
+        const result = await transcribeAudio(fileBuffer, mimeType, transcribeLang, diarize);
         result.pointsRemaining = deduction.remaining;
         res.json(result);
     } catch (e: any) {

@@ -17,6 +17,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeBtn = document.getElementById('close-modal');
     const logoLink = document.getElementById('logo-link');
 
+    // New link input UI elements
+    const btnPasteLink = document.getElementById('btn-paste-link');
+    const linkInputSection = document.getElementById('link-input-section');
+    const sttLink = document.getElementById('stt-link');
+    const btnCancelLink = document.getElementById('btn-cancel-link');
+    const uploadZone = document.getElementById('upload-zone');
+
     let isProcessing = false;
     let allUsersData = {}; // Cache for admin search
 
@@ -311,6 +318,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
 
+    // --- Link Input Handlers ---
+    if (btnPasteLink) {
+        btnPasteLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('hidden');
+            linkInputSection.classList.remove('hidden');
+            if (sttLink) sttLink.focus();
+        });
+    }
+
+    if (btnCancelLink) {
+        btnCancelLink.addEventListener('click', () => {
+            linkInputSection.classList.add('hidden');
+            uploadZone.classList.remove('hidden');
+            if (sttLink) sttLink.value = '';
+        });
+    }
+
     // --- Profile Update ---
     const profileForm = document.getElementById('edit-profile-form');
     if (profileForm) profileForm.addEventListener('submit', (e) => {
@@ -334,33 +359,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- STT Transcription ---
     document.getElementById('btn-transcribe')?.addEventListener('click', async () => {
-        if (!fileInput.files.length) return alert('Please upload an audio file first.');
+        const linkVal = sttLink ? sttLink.value.trim() : '';
+        const hasFile = fileInput.files.length > 0;
+        const usingLink = linkInputSection && !linkInputSection.classList.contains('hidden') && linkVal;
+
+        if (!hasFile && !usingLink) return alert('Please upload an audio file or provide a valid link first.');
         if (!getToken()) return alert('Please log in to use the Transcriber.');
 
         const btn = document.getElementById('btn-transcribe');
         const lang = document.getElementById('stt-lang').value;
         const diarize = document.getElementById('speaker-diarization').checked;
-        const file = fileInput.files[0];
-
-        const cost = Math.max(1, Math.ceil(duration / 300)); // Example: 1 pt per 5 mins
-        if (!confirm(`Transcription for this file will cost ${cost} points. Proceed?`)) return;
+        const file = hasFile ? fileInput.files[0] : null;
 
         isProcessing = true;
         btn.textContent = 'Analyzing...';
         btn.disabled = true;
 
-        const getDuration = () => new Promise(resolve => {
-            const audio = new Audio();
-            audio.src = URL.createObjectURL(file);
-            audio.onloadedmetadata = () => { URL.revokeObjectURL(audio.src); resolve(audio.duration); };
-            audio.onerror = () => resolve(0);
-        });
+        let duration = 0;
+        if (hasFile && !usingLink) {
+            const getDuration = () => new Promise(resolve => {
+                const audio = new Audio();
+                audio.src = URL.createObjectURL(file);
+                audio.onloadedmetadata = () => { URL.revokeObjectURL(audio.src); resolve(audio.duration); };
+                audio.onerror = () => resolve(0);
+            });
+            duration = await getDuration();
+        } else {
+            // For links, duration might be unknown upfront, use a default fallback or assume a basic cost
+            duration = 300; // default to 5 min equivalent cost for links initially
+        }
 
-        const duration = await getDuration();
+        const cost = Math.max(1, Math.ceil(duration / 300)); // Example: 1 pt per 5 mins
+        if (!confirm(`Transcription for this ${usingLink ? 'link' : 'file'} will cost approximately ${cost} points. Proceed?`)) {
+            btn.textContent = 'Process Transcription';
+            btn.disabled = false;
+            isProcessing = false;
+            return;
+        }
+
         btn.textContent = 'Transcribing...';
 
         const formData = new FormData();
-        formData.append('audio', file);
+        if (usingLink) {
+            formData.append('linkUrl', linkVal);
+        } else {
+            formData.append('audio', file);
+        }
         formData.append('lang', lang);
         formData.append('diarize', diarize.toString());
         formData.append('duration', duration.toString());

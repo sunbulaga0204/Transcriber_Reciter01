@@ -1,25 +1,22 @@
 # Future Roadmap: High-Performance Link Handling
-**Concept:** Implement a "Stacked" architecture for real-time video/audio URL processing using Memory Streams.
+**Concept:** Implement a robust architecture for YouTube/URL processing using temporary disk storage and audio-only extraction to respect free-tier constraints.
 
 ## 1. Technical Stack (Proposed)
-- **Engine:** `fluent-ffmpeg`
-- **Stream Handling:** Node.js `stream.Pipeline`
-- **Link Fetching:** `axios` (for direct files) or `ytdl-core` (for streaming sites)
+- **Engine:** `fluent-ffmpeg` (Spawned as isolated child processes)
+- **Stream Handling:** Node.js `fs.createWriteStream` to `/tmp`
+- **Link Fetching:** `ytdl-core` (Strictly using `filter: 'audioonly'` to save bandwidth)
 
-## 2. The "Memory Stream" Architecture
-To avoid Railway "Out of Memory" (OOM) crashes, we will bypass the disk entirely:
-1.  **Incoming Stream:** Pipe the download URL directly into the server memory.
-2.  **FFmpeg Filter:** Pipe the incoming stream through FFmpeg with `anull` (audio only) and `resample` (to 16kHz Mono) filters.
-3.  **Buffer Collector:** Collect the processed audio chunks into a single 16-bit PCM Buffer.
-4.  **Gemini Dispatch:** Send the final optimized Buffer to the Gemini Multimodal API.
+## 2. The "/tmp Disk Chunking" Architecture
+To avoid Railway "Out of Memory" (OOM) crashes and Event Loop blocking:
+1.  **Audio-Only Extraction:** Use `ytdl(url, { filter: 'audioonly' })`. This prevents downloading heavy 1080p video data and only pulls the M4A/WebM audio track.
+2.  **Disk Spooling:** Pipe the incoming audio stream through FFmpeg (resampling to 16kHz Mono) and write it directly to the `/tmp` directory on the server. Do **not** collect buffers in RAM.
+3.  **Sequential Chunking:** Read the saved file from `/tmp` in manageable chunks (e.g., 5-minute segments) and send them sequentially to the Gemini Multimodal API.
+4.  **Cleanup:** Once the transcription is complete and merged, explicitly delete the `/tmp` file to free up the 5GB disk limit.
 
-## 3. Optimizations for Cost (Railway Compute)
-- **Downsampling:** Reducing bitrate to 64kbps Mono before sending to Gemini to save bandwidth.
-- **Resource Limits:** Set a 5-minute timeout on conversion to prevent "zombie" FFmpeg processes from consuming CPU.
-- **Concurrency Control:** Limit to 1 simultaneous URL conversion per server instance to prevent CPU spikes.
-
-## 4. Handling Oversized Results
-- **Chunking Logic:** If the URL points to a >1hr file, the server will "slice" the stream every 30 minutes and perform parallel Gemini requests, merging the final `.srt` output.
+## 3. Optimizations for Cost & Stability (Railway Compute)
+- **20-Minute Hard Limit:** We will enforce a strict 20-minute maximum duration for any pasted link. This ensures the CPU isn't hogged for hours and aligns with Gemini's rate limits.
+- **Child Process Isolation:** Run FFmpeg as a separated child process. Node.js is single-threaded; if we run heavy processing on the main thread, it will freeze the server for everyone else.
+- **Concurrency Control:** Limit to 1 simultaneous URL conversion per server instance. If a second user requests a link transcription, they are placed in a queue.
 
 ---
 *Status: Architecture Defined. Pending Implementation.*
