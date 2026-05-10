@@ -16,7 +16,8 @@ export async function getYoutubeInfo(url: string): Promise<{ duration: number, t
         const options: any = { 
             dumpJson: true, 
             noCheckCertificates: true, 
-            noWarnings: true
+            noWarnings: true,
+            format: 'bestaudio/best' // Prevent format resolution errors on info fetch
         };
 
         // Check for /tmp/cookies.txt (env var source) or local cookies.txt
@@ -49,7 +50,7 @@ export async function processYoutubeLink(url: string): Promise<{ buffer: Buffer,
 
         const options: any = {
             extractAudio: true,
-            format: 'bestaudio[ext=m4a]/bestaudio',
+            format: 'bestaudio/best', // Simplified format to prevent availability errors
             output: tmpFilePath,
             noCheckCertificates: true,
             noWarnings: true
