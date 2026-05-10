@@ -376,7 +376,25 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true;
 
         let duration = 0;
-        if (hasFile && !usingLink) {
+        let linkTitle = '';
+        if (usingLink) {
+            try {
+                const infoRes = await fetch('/api/yt-info', {
+                    method: 'POST',
+                    headers: authHeaders({ 'Content-Type': 'application/json' }),
+                    body: JSON.stringify({ linkUrl: linkVal })
+                });
+                const infoData = await infoRes.json();
+                if (!infoRes.ok) throw new Error(infoData.error || 'Failed to fetch YouTube info');
+                duration = infoData.duration;
+                linkTitle = infoData.title;
+            } catch (err: any) {
+                btn.textContent = 'Process Transcription';
+                btn.disabled = false;
+                isProcessing = false;
+                return alert('Link Error: ' + err.message);
+            }
+        } else if (hasFile) {
             const getDuration = () => new Promise(resolve => {
                 const audio = new Audio();
                 audio.src = URL.createObjectURL(file);
@@ -384,13 +402,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 audio.onerror = () => resolve(0);
             });
             duration = await getDuration();
-        } else {
-            // For links, duration might be unknown upfront, use a default fallback or assume a basic cost
-            duration = 300; // default to 5 min equivalent cost for links initially
         }
 
-        const cost = Math.max(1, Math.ceil(duration / 300)); // Example: 1 pt per 5 mins
-        if (!confirm(`Transcription for this ${usingLink ? 'link' : 'file'} will cost approximately ${cost} points. Proceed?`)) {
+        const cost = Math.max(1, Math.ceil(duration / 120)); // Example: 1 pt per 2 mins
+        const promptMsg = usingLink 
+            ? `Transcription for "${linkTitle}" (~${Math.ceil(duration/60)} mins) will cost ${cost} points. Proceed?`
+            : `Transcription for this file will cost ${cost} points. Proceed?`;
+
+        if (!confirm(promptMsg)) {
             btn.textContent = 'Process Transcription';
             btn.disabled = false;
             isProcessing = false;

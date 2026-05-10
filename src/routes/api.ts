@@ -6,7 +6,7 @@ import { getPoints, deductPoint, refundPoint } from '../services/points.js';
 import { checkRateLimit } from '../services/ratelimit.js';
 import { fetchExchangeRates } from '../services/pricing.js';
 import { generateTTS, transcribeAudio, getRecoverableTTS } from '../services/gemini.js';
-import { processYoutubeLink } from '../services/youtube.js';
+import { processYoutubeLink, getYoutubeInfo } from '../services/youtube.js';
 import type { TTSRequest } from '../types/index.js';
 
 const router = express.Router();
@@ -79,6 +79,18 @@ router.get('/tts/recover', validateJWT, async (req: AuthRequest, res) => {
         
         res.set('Content-Type', 'audio/wav');
         res.send(audioBuffer);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/yt-info', validateJWT, async (req: AuthRequest, res) => {
+    try {
+        const { linkUrl } = req.body;
+        if (!linkUrl) return res.status(400).json({ error: 'Link URL is required.' });
+        
+        const info = await getYoutubeInfo(linkUrl);
+        res.json(info);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
