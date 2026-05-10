@@ -9,7 +9,8 @@ export async function getYoutubeInfo(url: string): Promise<{ duration: number, t
         const info: any = await youtubedl(url, { 
             dumpJson: true, 
             noCheckCertificates: true, 
-            noWarnings: true 
+            noWarnings: true,
+            extractorArgs: 'youtube:player_client=android,web'
         });
         return { duration: info.duration, title: info.title };
     } catch (error: any) {
@@ -31,12 +32,14 @@ export async function processYoutubeLink(url: string): Promise<{ buffer: Buffer,
         const tmpFilePath = path.join('/tmp', `aurelius_audio_${tmpFileId}.m4a`);
 
         // Download directly to m4a format (bypasses ffmpeg dependency)
+        // Using player_client=android to bypass bot wall
         await youtubedl(url, {
             extractAudio: true,
             format: 'bestaudio[ext=m4a]/bestaudio',
             output: tmpFilePath,
             noCheckCertificates: true,
-            noWarnings: true
+            noWarnings: true,
+            extractorArgs: 'youtube:player_client=android,web'
         });
 
         if (!fs.existsSync(tmpFilePath)) {
