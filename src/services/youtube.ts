@@ -1,12 +1,12 @@
-import youtubedlLib from 'youtube-dl-exec';
-const youtubedl: any = youtubedlLib;
+import youtubedl from 'youtube-dl-exec';
+const { exec: ytdlExec } = youtubedl;
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
 export async function getYoutubeInfo(url: string): Promise<{ duration: number, title: string }> {
     try {
-        const info: any = await youtubedl(url, { 
+        const info: any = await ytdlExec(url, { 
             dumpJson: true, 
             noCheckCertificates: true, 
             noWarnings: true 
@@ -31,7 +31,7 @@ export async function processYoutubeLink(url: string): Promise<{ buffer: Buffer,
         const tmpFilePath = path.join('/tmp', `aurelius_audio_${tmpFileId}.m4a`);
 
         // Download directly to m4a format (bypasses ffmpeg dependency)
-        await youtubedl(url, {
+        await ytdlExec(url, {
             extractAudio: true,
             format: 'bestaudio[ext=m4a]/bestaudio',
             output: tmpFilePath,
