@@ -1,4 +1,5 @@
-import youtubedl from 'youtube-dl-exec';
+import youtubedlLib from 'youtube-dl-exec';
+const youtubedl: any = youtubedlLib;
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
