@@ -388,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!infoRes.ok) throw new Error(infoData.error || 'Failed to fetch YouTube info');
                 duration = infoData.duration;
                 linkTitle = infoData.title;
-            } catch (err: any) {
+            } catch (err) {
                 btn.textContent = 'Process Transcription';
                 btn.disabled = false;
                 isProcessing = false;
