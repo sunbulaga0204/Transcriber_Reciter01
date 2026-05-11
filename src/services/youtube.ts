@@ -16,8 +16,8 @@ export async function getYoutubeInfo(url: string): Promise<{ duration: number, t
         const options: any = { 
             dumpJson: true, 
             noCheckCertificates: true, 
-            noWarnings: true
-            // Removed format: 'bestaudio/best' to prevent 'Requested format is not available' error on info fetch
+            noWarnings: true,
+            format: 'bestaudio' // Only request audio formats to prevent video-parsing crashes
         };
 
         // Check for /tmp/cookies.txt (env var source) or local cookies.txt
@@ -49,11 +49,10 @@ export async function processYoutubeLink(url: string): Promise<{ buffer: Buffer,
         const cookiesPath = path.join('/tmp', 'cookies.txt');
 
         const options: any = {
-            format: 'bestaudio/best', // Download highest quality audio-only stream
+            format: 'bestaudio', // Download highest quality audio-only stream exclusively
             output: tmpFilePath,
             noCheckCertificates: true,
             noWarnings: true
-            // REMOVED extractAudio: true to prevent FFmpeg dependency crashes!
         };
 
         // Reuse /tmp cookies or local cookies
