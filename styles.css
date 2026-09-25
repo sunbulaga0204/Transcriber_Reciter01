@@ -140,52 +140,6 @@ h1 {
     color: var(--spotify-green);
 }
 
-/* Mode Toggle */
-.mode-toggle-container {
-    display: flex;
-    justify-content: flex-start;
-}
-
-.toggle-track {
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    border-bottom: 1px solid #333;
-    padding-bottom: 0.5rem;
-}
-
-.toggle-indicator {
-    display: none; /* Hide the box indicator */
-}
-
-.toggle-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    font-family: var(--font-ui);
-    font-weight: 600;
-    font-size: 1rem;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    position: relative;
-    transition: color 0.2s;
-}
-
-.toggle-btn.active {
-    color: #fff;
-}
-
-.toggle-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: -0.6rem;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background-color: var(--spotify-green);
-    border-radius: 3px;
-}
-
 .auth-buttons {
     display: flex;
     gap: 1rem;
@@ -392,16 +346,6 @@ h2 {
     padding: 0.5rem 1rem;
     border-radius: 4px;
     display: inline-block;
-}
-
-/* Audio Player */
-.audio-player-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    background: #282828;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
 }
 
 /* Modal */
