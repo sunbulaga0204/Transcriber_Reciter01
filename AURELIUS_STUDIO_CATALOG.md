@@ -10,20 +10,14 @@ Aurelius Audio Studio is a high-performance, AI-driven workspace designed for th
 
 ## 2. Core Capabilities
 
-### A. The "Persona" Reader (TTS)
-*High-Fidelity Neural Speech Synthesis*
-Aurelius transforms text into a sophisticated auditory experience. Unlike standard "robotic" voices, the Persona Reader utilizes deep-learning models to provide nuanced, emotive narration.
-- **Studio Quality:** 48kHz HD Audio output in WAV format.
-- **Persona Diversity:** Select from refined profiles including **British RP (Sophisticated)** and **Australian (Natural/Friendly)**.
-- **Director Prompting:** A unique industry-first feature allowing users to "direct" the voice (e.g., *"Speak with an urgent, breathless tone"* or *"Adopt a calming, bedtime-story cadence"*).
-- **Production Use-Cases:** Ideal for audiobook narration, video voiceovers, and accessible research drafting.
-
-### B. Audio Studio Transcriber (STT)
+### Audio Studio Transcriber (STT)
 *Forensic Transcription & Subtitle Generation*
-Aurelius provides high-accuracy transcription for long-form recordings (up to 1 hour/50MB).
+Aurelius provides high-accuracy transcription for live voice recording, local audio files, and streaming video links (up to 120 minutes/200MB).
+- **Built-in Live Recorder:** Client-side IndexedDB caching for up to 120 minutes with lossless 16-bit PCM WAV export.
 - **Speaker Diarization:** Automatically identifies and labels different speakers (Speaker A, Speaker B, etc.), essential for qualitative research and interview analysis.
 - **SRT Subtitle Engine:** Exports production-ready `.srt` files with millisecond-precision timestamps for immediate use in Premiere Pro, Final Cut, or DaVinci Resolve.
 - **Intelligent Summarization:** One-click AI summaries that distill hours of audio into key findings, themes, and action items.
+- **Preview Safeguard:** Display features a 35% on-screen preview with full 100% text and subtitle downloads.
 
 ---
 
@@ -47,8 +41,7 @@ Aurelius is built on a "Privacy-First" infrastructure:
 Aurelius operates on a transparent **Point Economy**, allowing users to pay only for what they consume.
 
 ### Consumption Rates
-- **Reader (TTS):** 1 Point per ~400 words synthesized.
-- **Transcriber (STT):** 1 Point per ~2 minutes of audio processed.
+- **Transcriber (STT):** 1 Point per ~2 minutes of audio processed (Currently unlimited during payment revision).
 
 ### Global Pricing (Top-Up)
 We support local currencies to ensure affordability for researchers and creators worldwide. Top-ups are managed via direct WhatsApp integration for personalized service.

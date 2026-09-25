@@ -14,21 +14,18 @@ export interface RateLimitRecord {
     lastRequest: number;
 }
 
-export interface TTSRequest {
+export interface STTSegment {
+    startSec: number;
+    endSec: number;
+    timeRange: string;
+    speaker: string;
     text: string;
-    prompt?: string;
-    voice?: string;
-    speed?: string;
 }
 
 export interface STTResponse {
     transcript: string;
+    rawTranscript: string;
     summary: string;
     pointsRemaining: number;
-}
-
-export interface TTSResponse {
-    audioBase64: string;
-    mimeType: string;
-    pointsRemaining: number;
+    segments?: STTSegment[];
 }

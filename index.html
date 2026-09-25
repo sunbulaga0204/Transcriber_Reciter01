@@ -29,74 +29,83 @@
                 <button id="btn-dashboard-nav" class="nav-link hidden">Dashboard</button>
                 <button id="btn-topup-nav" class="cyber-button primary small hidden">⚡ Top Up</button>
                 <div id="auth-controls" class="auth-buttons">
+                    <button id="btn-mock-login" class="cyber-button outline small" style="border-color: #1DB954; color: #1DB954;">⚡ Quick Test Login</button>
                     <div id="google-signin-btn"></div>
                     <button id="btn-logout" class="cyber-button outline small hidden">Log Out</button>
                 </div>
             </div>
         </header>
 
-        <!-- Mode Toggle -->
-        <div class="mode-toggle-container">
-            <div class="toggle-track">
-                <div class="toggle-indicator"></div>
-                <button class="toggle-btn active" id="btn-reader">🔊 Reader</button>
-                <button class="toggle-btn" id="btn-transcriber">📝 Transcriber</button>
-            </div>
-        </div>
-
         <!-- Main Content Area -->
         <main class="workspace">
             
-            <!-- READER MODE (TTS) -->
-            <section id="view-reader" class="view-section active">
-                <div class="glass-panel">
-                    <h2>The "Persona" Reader</h2>
-                    <p class="subtitle">High-fidelity voice synthesis</p>
-                    
-                    <div class="controls-grid">
-                        <div class="control-group">
-                            <label>Accent & Persona</label>
-                            <select id="reader-voice" class="cyber-select">
-                                <option value="british-rp">British RP (Sophisticated/Formal)</option>
-                                <option value="australian">Australian (Friendly/Natural)</option>
-                                <option value="arabic">Arabic (Under Development)</option>
-                            </select>
-                        </div>
-                        <div class="control-group">
-                            <label>Speed: <span id="speed-val">1.0x</span></label>
-                            <input type="range" id="reader-speed" min="0.5" max="2.0" step="0.1" value="1.0" class="cyber-slider">
-                        </div>
-                        <div class="control-group">
-                            <label>Director Prompt <span class="label-note">(customize the voice here)</span></label>
-                            <input type="text" id="reader-prompt" class="cyber-input" placeholder="e.g., Speak with an urgent tone...">
-                        </div>
-                    </div>
-
-                    <div class="editor-area">
-                        <textarea id="reader-text" class="cyber-textarea" placeholder="Enter text to synthesize..."></textarea>
-                    </div>
-                    
-                    <div class="action-bar">
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button id="btn-generate-tts" class="cyber-button primary">Generate Audio (1 Pt / 400 words)</button>
-                            <button id="btn-recover-tts" class="cyber-button secondary" title="Retrieve your last successful generation if download failed.">Recover Last Audio (Free)</button>
-                        </div>
-                        <div class="audio-player-container hidden" id="tts-player-wrapper">
-                            <audio id="tts-audio" controls></audio>
-                            <a id="tts-download" class="cyber-button secondary" download="aurelius_output">Download</a>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <!-- TRANSCRIBER MODE (STT) -->
-            <section id="view-transcriber" class="view-section hidden">
+            <section id="view-transcriber" class="view-section active">
                 <div class="transcriber-container">
                     <h2 class="view-title">Aurelius Audio Studio Transcriber</h2>
-                    <p class="view-subtitle">AI-powered transcription for researchers, filmmakers, and content creators.</p>
+                    <p class="view-subtitle">High-fidelity transcription for interviews, long meetings, media, and voice notes.</p>
                     
+                    <!-- HERO FEATURE: Built-in Live Audio Recorder -->
+                    <div class="recorder-card" id="recorder-card">
+                        <div class="recorder-header">
+                            <div class="recorder-badge"><span class="rec-dot"></span> LIVE MIC RECORDER</div>
+                            <div class="recorder-timer" id="rec-timer">00:00:00</div>
+                            <div class="recorder-limit">Max: 120 mins</div>
+                        </div>
+
+                        <!-- Visualizer Waveform Animation -->
+                        <div class="recorder-visualizer" id="rec-visualizer">
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                        </div>
+
+                        <p class="recorder-status" id="rec-status-text">Click "Start Recording" to begin audio capture</p>
+
+                        <div class="recorder-actions">
+                            <button id="btn-record-start" class="cyber-button primary rec-btn-main">
+                                <span class="btn-rec-icon">⏺</span> Start Recording
+                            </button>
+                            <button id="btn-record-pause" class="cyber-button secondary hidden">
+                                ⏸ Pause
+                            </button>
+                            <button id="btn-record-resume" class="cyber-button secondary hidden">
+                                ▶ Resume
+                            </button>
+                            <button id="btn-record-stop" class="cyber-button outline hidden" style="border-color: #ff4757; color: #ff6b81;">
+                                ⏹ Stop & Save
+                            </button>
+                        </div>
+
+                        <div id="recorder-finished-box" class="recorder-finished hidden">
+                            <div class="finished-info">
+                                <span class="finished-label">✅ Recorded Audio Ready:</span>
+                                <span id="recorded-file-meta" class="finished-meta">00:00 - High Quality WAV</span>
+                            </div>
+                            <div class="finished-btns">
+                                <audio id="recorded-audio-preview" controls class="audio-inline-preview"></audio>
+                                <button id="btn-download-wav" class="cyber-button secondary small">⬇ Download .wav</button>
+                                <button id="btn-transcribe-recording" class="cyber-button primary small">⚡ Transcribe This Recording</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="divider-text">
+                        <span>OR IMPORT AUDIO FILE / STREAMING LINK</span>
+                    </div>
+
+                    <!-- Audio File Drag & Drop or Link -->
                     <div class="upload-area" id="upload-zone">
-                        <input type="file" id="stt-file" accept="audio/*" class="hidden-input">
+                        <input type="file" id="stt-file" accept="audio/*,video/*" class="hidden-input">
                         <div class="upload-content">
                             <div class="upload-visual">
                                 <div class="icon-circle">
@@ -109,57 +118,77 @@
                             </div>
                             <div class="upload-text">
                                 <p class="primary-text">Drag & Drop Audio File or <a href="#" class="paste-link" id="btn-paste-link">Paste Link</a></p>
-                                <p class="secondary-text">Supported formats: MP3, WAV, M4A (Max 50MB)</p>
+                                <p class="secondary-text">Supported: MP3, WAV, M4A, WEBM, FLAC (Max 200MB / 120 mins)</p>
                             </div>
                         </div>
                         <p class="file-name" id="selected-file-name"></p>
                     </div>
                     
-                    <div id="link-input-section" class="hidden" style="margin-top: 15px; padding: 15px; background: rgba(20, 20, 20, 0.6); border: 1px dashed #1DB954; border-radius: 8px;">
-                        <label style="display: block; margin-bottom: 8px; color: #1DB954; font-weight: 600;">Audio/Video Link URL</label>
-                        <input type="text" id="stt-link" class="cyber-input" placeholder="Paste YouTube or direct media URL here..." style="width: 100%; margin-bottom: 10px;">
+                    <div id="link-input-section" class="hidden" style="margin-top: 15px; margin-bottom: 20px; padding: 18px; background: rgba(20, 20, 20, 0.7); border: 1px dashed #1DB954; border-radius: 8px;">
+                        <label style="display: block; margin-bottom: 8px; color: #1DB954; font-weight: 600; font-size: 0.9rem;">Audio/Video Stream URL (YouTube, Facebook, Direct Media)</label>
+                        <input type="text" id="stt-link" class="cyber-input" placeholder="https://www.youtube.com/watch?v=... or direct audio/video link" style="width: 100%; margin-bottom: 12px;">
                         <button id="btn-cancel-link" class="cyber-button outline small" style="width: 100%;">Cancel & Use File Upload</button>
                     </div>
 
-                    <p class="data-warning">⚠️ Note: Transcription and audio are not preserved. Please download your results before closing the tab.</p>
-
                     <div class="options-grid">
                         <div class="option-col">
-                            <label class="option-label">Speaker Identification</label>
+                            <label class="option-label">Speaker Identification (Diarization)</label>
                             <div class="toggle-container">
                                 <label class="switch">
                                     <input type="checkbox" id="speaker-diarization" checked>
                                     <span class="slider round"></span>
                                 </label>
-                                <span class="toggle-desc">Identify distinct speakers (e.g., Speaker A, Speaker B)</span>
+                                <span class="toggle-desc">Detect & label speakers with timestamps</span>
                             </div>
                         </div>
                         <div class="option-col">
-                            <label class="option-label">Language Selection</label>
+                            <label class="option-label">Language Detection</label>
                             <select id="stt-lang" class="cyber-select">
                                 <option value="en-US">English (US)</option>
                                 <option value="en">English (UK)</option>
-                                <option value="ar">Arabic</option>
-                                <option value="ms">Malay</option>
-                                <option value="id">Indonesian</option>
+                                <option value="id">Indonesian (Bahasa Indonesia)</option>
+                                <option value="ms">Malay (Bahasa Melayu)</option>
+                                <option value="ar">Arabic (العربية)</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="action-bar-full">
+                        <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 8px; gap: 8px;">
+                            <label style="font-size: 0.8rem; color: #1DB954; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" id="toggle-mock-mode" checked style="accent-color: #1DB954;">
+                                <span>⚡ Mock API Mode (Instant test without consuming Gemini quota)</span>
+                            </label>
+                        </div>
                         <button id="btn-transcribe" class="cyber-button primary full-width">Process Transcription</button>
                         <button id="btn-summarize" class="cyber-button secondary hidden full-width mt-3">One-Click Summary</button>
                     </div>
 
+                    <!-- Results Area with 35% Preview Cutoff & Full Downloads -->
                     <div class="results-area hidden" id="stt-results">
                         <div class="results-header">
-                            <h3>Transcript</h3>
+                            <div class="results-header-title">
+                                <h3>Transcription Result</h3>
+                                <span class="preview-badge" id="preview-pill">Previewing ~35% of Content</span>
+                            </div>
                             <div class="export-btns">
-                                <button id="btn-download-transcript" class="cyber-button outline small">Download .txt</button>
-                                <button id="btn-download-srt" class="cyber-button outline small">Download .srt</button>
+                                <button id="btn-download-transcript" class="cyber-button outline small" title="Download 100% full transcript as text file">⬇ Full .txt (100%)</button>
+                                <button id="btn-download-srt" class="cyber-button outline small" title="Download 100% full subtitle as SRT file">⬇ Full .srt (100%)</button>
                             </div>
                         </div>
-                        <div class="transcript-content" id="transcript-text"></div>
+                        
+                        <!-- Visible Display (Capped to max 35%) -->
+                        <div class="transcript-display-wrapper">
+                            <div class="transcript-content" id="transcript-text"></div>
+                            <div class="transcript-cutoff-fade" id="transcript-fade">
+                                <div class="fade-overlay"></div>
+                                <div class="cutoff-notice">
+                                    <span class="cutoff-icon">🔒</span>
+                                    <p class="cutoff-title">On-screen preview limit reached (35% displayed)</p>
+                                    <p class="cutoff-desc">The complete, uncropped transcription is ready to export via the buttons above.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

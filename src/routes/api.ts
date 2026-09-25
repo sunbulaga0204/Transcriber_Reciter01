@@ -2,15 +2,14 @@ import express from 'express';
 import multer from 'multer';
 import { validateJWT } from '../middlewares/auth.js';
 import type { AuthRequest } from '../middlewares/auth.js';
-import { getPoints, deductPoint, refundPoint } from '../services/points.js';
+import { getPoints } from '../services/points.js';
 import { checkRateLimit } from '../services/ratelimit.js';
 import { fetchExchangeRates } from '../services/pricing.js';
-import { generateTTS, transcribeAudio, getRecoverableTTS } from '../services/gemini.js';
+import { transcribeAudio } from '../services/gemini.js';
 import { processYoutubeLink, getYoutubeInfo } from '../services/youtube.js';
-import type { TTSRequest } from '../types/index.js';
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }); // 50MB limit
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } }); // 200MB limit for up to 120min audio
 
 router.get('/pricing', async (req, res) => {
     try {
@@ -33,56 +32,6 @@ router.get('/points', validateJWT, async (req: AuthRequest, res) => {
     }
 });
 
-router.post('/tts', validateJWT, async (req: AuthRequest, res) => {
-    const userId = req.user!.id;
-
-    const rateCheck = await checkRateLimit(userId, 'tts');
-    if (!rateCheck.allowed) {
-        return res.status(429).json({ error: `Rate limit reached. Please wait ${rateCheck.retryAfterSeconds} seconds.` });
-    }
-
-    const { text, prompt, voice, speed } = req.body as TTSRequest;
-    if (!text || text.trim().length === 0) {
-        return res.status(400).json({ error: 'Text is required.' });
-    }
-
-    const wordCount = text.trim().split(/\s+/).length;
-    const requiredPoints = Math.max(1, Math.ceil(wordCount / 400));
-
-    const deduction = await deductPoint(userId, requiredPoints);
-    if (!deduction.success) {
-        return res.status(402).json({ error: `Insufficient points. Requires ${requiredPoints} points for ~${wordCount} words. You have ${deduction.remaining} point(s).` });
-    }
-
-    try {
-        const audioBuffer = await generateTTS(userId, text, voice, speed, prompt);
-        
-        // Send points in a header and audio in the body to save memory
-        res.set('Content-Type', 'audio/wav');
-        res.set('x-points-remaining', deduction.remaining.toString());
-        
-        res.send(audioBuffer);
-    } catch (e: any) {
-        await refundPoint(userId, requiredPoints);
-        res.status(502).json({ error: `Speech synthesis failed: ${e.message}. Points refunded.` });
-    }
-});
-
-router.get('/tts/recover', validateJWT, async (req: AuthRequest, res) => {
-    try {
-        const userId = req.user!.id;
-        const audioBuffer = getRecoverableTTS(userId);
-        
-        if (!audioBuffer) {
-            return res.status(404).json({ error: 'No recent audio found for recovery or cache expired (1hr limit).' });
-        }
-        
-        res.set('Content-Type', 'audio/wav');
-        res.send(audioBuffer);
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-});
 
 router.post('/yt-info', validateJWT, async (req: AuthRequest, res) => {
     try {
@@ -125,28 +74,60 @@ router.post('/stt', validateJWT, upload.single('audio'), async (req: AuthRequest
         return res.status(400).json({ error: `Audio processing failed: ${e.message}` });
     }
 
-    // Pricing: 1 point per 2 minutes (120 seconds). Minimum 1 point.
-    const requiredPoints = Math.max(1, Math.ceil(duration / 120));
+    // Points deduction is temporarily deactivated during payment system revision
+    const currentPointsData = await getPoints(userId, false, req.user!.email);
+    const userRemainingPoints = currentPointsData.points;
 
-    const rateCheck = await checkRateLimit(userId, 'stt');
-    if (!rateCheck.allowed) {
-        return res.status(429).json({ error: `Rate limit reached. Please wait ${rateCheck.retryAfterSeconds} seconds.` });
-    }
+    // Fast-path mock response for rapid UI/feature evaluation without calling external Gemini API
+    if (process.env.MOCK_API === 'true' || req.headers['x-mock-mode'] === 'true') {
+        const mockRawTranscript = `[00:00 - 00:06] Speaker A: Welcome to our deep dive on modern multimodal speech recognition and audio analysis.
+[00:07 - 00:15] Speaker B: Thank you! Today we will examine how real-time recording caches audio directly in client storage.
+[00:16 - 00:23] Speaker A: Exactly. Audio is captured in high fidelity and streamed into IndexedDB without straining browser memory.
+[00:24 - 00:32] Speaker B: That allows long recordings of up to 120 minutes with zero frame drops or tab freezing.
+[00:33 - 00:41] Speaker A: Once recording stops, users can immediately export lossless 16-bit PCM WAV files.
+[00:42 - 00:50] Speaker B: Furthermore, full timestamped diarization is preserved for clean subtitle synchronization.
+[00:51 - 01:00] Speaker A: Notice that the on-screen preview cleanly caps at 35% of the total content to protect output integrity.
+[01:01 - 01:10] Speaker B: While the complete 100% transcript and SRT subtitles remain fully accessible via the export buttons.
+[01:11 - 01:20] Speaker A: This provides an optimal experience for researchers, legal transcribers, and video creators alike.
+[01:21 - 01:30] Speaker B: In conclusion, the architecture combines memory safety, high precision, and flexible format exports.`;
 
-    const deduction = await deductPoint(userId, requiredPoints);
-    if (!deduction.success) {
-        return res.status(402).json({ error: `Insufficient points. Requires ${requiredPoints} points for ~${Math.ceil(duration/60)} mins. You have ${deduction.remaining} point(s).` });
+        const mockSegments = [
+            { startSec: 0, endSec: 6, timeRange: '00:00 - 00:06', speaker: 'Speaker A', text: 'Welcome to our deep dive on modern multimodal speech recognition and audio analysis.' },
+            { startSec: 7, endSec: 15, timeRange: '00:07 - 00:15', speaker: 'Speaker B', text: 'Thank you! Today we will examine how real-time recording caches audio directly in client storage.' },
+            { startSec: 16, endSec: 23, timeRange: '00:16 - 00:23', speaker: 'Speaker A', text: 'Exactly. Audio is captured in high fidelity and streamed into IndexedDB without straining browser memory.' },
+            { startSec: 24, endSec: 32, timeRange: '00:24 - 00:32', speaker: 'Speaker B', text: 'That allows long recordings of up to 120 minutes with zero frame drops or tab freezing.' },
+            { startSec: 33, endSec: 41, timeRange: '00:33 - 00:41', speaker: 'Speaker A', text: 'Once recording stops, users can immediately export lossless 16-bit PCM WAV files.' },
+            { startSec: 42, endSec: 50, timeRange: '00:42 - 00:50', speaker: 'Speaker B', text: 'Furthermore, full timestamped diarization is preserved for clean subtitle synchronization.' },
+            { startSec: 51, endSec: 60, timeRange: '00:51 - 01:00', speaker: 'Speaker A', text: 'Notice that the on-screen preview cleanly caps at 35% of the total content to protect output integrity.' },
+            { startSec: 61, endSec: 70, timeRange: '01:01 - 01:10', speaker: 'Speaker B', text: 'While the complete 100% transcript and SRT subtitles remain fully accessible via the export buttons.' },
+            { startSec: 71, endSec: 80, timeRange: '01:11 - 01:20', speaker: 'Speaker A', text: 'This provides an optimal experience for researchers, legal transcribers, and video creators alike.' },
+            { startSec: 81, endSec: 90, timeRange: '01:21 - 01:30', speaker: 'Speaker B', text: 'In conclusion, the architecture combines memory safety, high precision, and flexible format exports.' }
+        ];
+
+        const mockFormatted = mockRawTranscript.split('\n').map(line => {
+            let processed = line
+                .replace(/\[(\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})\]/g, '<span class="timestamp">[$1]</span>')
+                .replace(/^(Speaker [A-Z]|[\w\s]+):/i, '<strong>$1:</strong>');
+            return `<p>${processed}</p>`;
+        }).join('');
+
+        return res.json({
+            transcript: mockFormatted,
+            rawTranscript: mockRawTranscript,
+            summary: 'This session demonstrates the refactored Aurelius Transcriber engine. It showcases client-side IndexedDB caching for long-duration audio capture (up to 120 minutes), 16-bit PCM WAV export, 35% on-screen display preview cutoff, and complete 100% text and SRT subtitle generation.',
+            pointsRemaining: userRemainingPoints,
+            segments: mockSegments
+        });
     }
 
     try {
         const transcribeLang = lang || 'en';
         const diarize = diarizeStr === 'true';
         const result = await transcribeAudio(fileBuffer, mimeType, transcribeLang, diarize);
-        result.pointsRemaining = deduction.remaining;
+        result.pointsRemaining = userRemainingPoints;
         res.json(result);
     } catch (e: any) {
-        await refundPoint(userId, requiredPoints);
-        res.status(502).json({ error: `Transcription failed: ${e.message}. Points refunded.` });
+        res.status(502).json({ error: `Transcription failed: ${e.message}` });
     }
 });
 

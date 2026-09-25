@@ -6,6 +6,17 @@ import { getPoints } from '../services/points.js';
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+router.post('/mock', async (req, res) => {
+    const user = {
+        id: 'mock_demo_user',
+        name: 'Demo Tester',
+        email: 'demo.tester@example.com',
+        roles: ['admin']
+    };
+    const appToken = 'mock-demo-token';
+    res.json({ token: appToken, user });
+});
+
 router.post('/google', async (req, res) => {
     try {
         const { credential } = req.body;

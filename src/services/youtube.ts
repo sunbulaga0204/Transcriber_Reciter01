@@ -49,8 +49,8 @@ export async function processYoutubeLink(url: string): Promise<{ buffer: Buffer,
         if (cookiesPath) infoOptions.cookies = cookiesPath;
         const info: any = await youtubedl(url, infoOptions);
 
-        if (info.duration > 1200) {
-            throw new Error('Video duration exceeds the 20-minute limit for the free tier.');
+        if (info.duration > 7200) {
+            throw new Error('Video duration exceeds the 120-minute limit.');
         }
 
         // Step 2: Pick the best available audio-only format ID from the metadata
